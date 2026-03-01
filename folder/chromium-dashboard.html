@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Security Report — chromium-dashboard</title>
+<style>
+  :root { --critical: #d63031; --high: #e17055; --medium: #fdcb6e; --low: #00b894; --info: #74b9ff; --bg: #0d1117; --surface: #161b22; --surface2: #21262d; --border: #30363d; --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', monospace; background: var(--bg); color: var(--text); line-height: 1.6; padding: 2rem; }
+  h1 { font-size: 1.8rem; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; margin-bottom: 1.5rem; }
+  h2 { font-size: 1.3rem; color: var(--text); margin: 2rem 0 1rem; border-left: 3px solid var(--accent); padding-left: 0.75rem; }
+  h4 { font-size: 0.9rem; color: var(--muted); text-transform: uppercase; margin: 1rem 0 0.3rem; }
+  a { color: var(--accent); }
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; text-align: center; }
+  .card .num { font-size: 2rem; font-weight: 700; } .card .label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; }
+  .card.critical { border-color: var(--critical); } .card.critical .num { color: var(--critical); }
+  .card.high { border-color: var(--high); } .card.high .num { color: var(--high); }
+  .card.medium { border-color: var(--medium); } .card.medium .num { color: var(--medium); }
+  .card.low { border-color: var(--low); } .card.low .num { color: var(--low); }
+  .card.info .num { color: var(--info); }
+  .badge { display: inline-block; padding: 0.15rem 0.6rem; border-radius: 12px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; }
+  .badge-critical { background: var(--critical); color: #fff; } .badge-high { background: var(--high); color: #fff; }
+  .badge-medium { background: var(--medium); color: #1a1a1a; } .badge-low { background: var(--low); color: #fff; }
+  .badge-cve { background: #6c5ce7; color: #fff; } .badge-nc { background: var(--surface2); color: var(--muted); }
+  .finding { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin: 1.5rem 0; overflow: hidden; }
+  .finding-header { display: flex; align-items: center; gap: 0.75rem; padding: 0.9rem 1.2rem; background: var(--surface2); border-bottom: 1px solid var(--border); }
+  .finding-id { font-size: 0.78rem; color: var(--muted); font-family: monospace; }
+  .finding-title { font-weight: 600; font-size: 1rem; flex: 1; }
+  .finding-body { padding: 1.2rem; }
+  .finding-meta { display: flex; flex-wrap: wrap; gap: 1.5rem; margin-bottom: 1rem; font-size: 0.85rem; }
+  .finding.sev-critical { border-left: 4px solid var(--critical); } .finding.sev-high { border-left: 4px solid var(--high); }
+  .finding.sev-medium { border-left: 4px solid var(--medium); } .finding.sev-low { border-left: 4px solid var(--low); }
+  pre { background: #010409; border: 1px solid var(--border); border-radius: 6px; padding: 1rem; overflow-x: auto; font-size: 0.82rem; margin: 0.5rem 0; }
+  code { font-family: monospace; } p code { background: var(--surface2); padding: 0.1em 0.4em; border-radius: 4px; color: #f8c8c8; }
+  .table-wrap { overflow-x: auto; margin: 1rem 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th { background: var(--surface2); color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 0.72rem; padding: 0.6rem 0.9rem; text-align: left; border-bottom: 2px solid var(--border); }
+  td { padding: 0.55rem 0.9rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .unclaimed { color: var(--critical); font-weight: 700; } .shadow { color: var(--high); font-weight: 700; }
+  details { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin: 0.8rem 0; }
+  summary { padding: 0.8rem 1.2rem; cursor: pointer; font-weight: 600; font-size: 0.9rem; list-style: none; }
+  details > *:not(summary) { padding: 0 1.2rem 1.2rem; }
+  .report-header { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem; }
+  .report-meta { font-size: 0.83rem; color: var(--muted); line-height: 1.8; } .report-meta strong { color: var(--text); }
+  .risk-banner { padding: 0.5rem 1.4rem; border-radius: 6px; font-weight: 700; font-size: 1.1rem; }
+  .risk-critical { background: var(--critical); color: #fff; } .risk-high { background: var(--high); color: #fff; }
+  .risk-medium { background: var(--medium); color: #1a1a1a; } .risk-low { background: var(--low); color: #fff; }
+  .section-empty { color: var(--muted); font-style: italic; padding: 1rem 0; }
+  .p0 { color: var(--critical); font-weight: 700; } .p1 { color: var(--high); font-weight: 700; } .p2 { color: var(--medium); font-weight: 700; }
+  footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.78rem; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<h1>&#x1F6E1; Security Vulnerability Report</h1>
+<div class="report-header">
+  <div class="report-meta">
+    <strong>Repository:</strong> <a href="https://github.com/GoogleChrome/chromium-dashboard">https://github.com/GoogleChrome/chromium-dashboard</a><br>
+    <strong>Branch:</strong> main (HEAD: cd417cc)<br>
+    <strong>Languages:</strong> Python (Flask/App Engine), TypeScript/JavaScript (Lit Web Components), HTML/Jinja2<br>
+    <strong>Analysis Date:</strong> 2026-03-01<br>
+    <strong>Analyst:</strong> Claude Code Security Scanner
+  </div>
+  <div class="risk-banner risk-high">HIGH RISK</div>
+</div>
+
+<h2>Executive Summary</h2>
+<div class="summary-grid">
+  <div class="card critical"><div class="num">0</div><div class="label">Critical</div></div>
+  <div class="card high"><div class="num">2</div><div class="label">High</div></div>
+  <div class="card medium"><div class="num">2</div><div class="label">Medium</div></div>
+  <div class="card low"><div class="num">1</div><div class="label">Low</div></div>
+  <div class="card info"><div class="num">7</div><div class="label">Dep CVEs</div></div>
+  <div class="card critical"><div class="num">0</div><div class="label">Dep Confusion</div></div>
+  <div class="card info"><div class="num">0</div><div class="label">Secrets</div></div>
+  <div class="card info"><div class="num">0</div><div class="label">CVE-Eligible</div></div>
+</div>
+<p style="margin:1rem 0;line-height:1.7">
+  chromium-dashboard (chromestatus.com) is a Python/Flask application running on Google App Engine that tracks Chrome platform feature launches. The scan identified two high-severity confirmed vulnerabilities: (1) an authenticated Server-Side Request Forgery (SSRF) in the AI-powered WPT coverage analysis pipeline, where feature <code>explainer_links</code> and <code>spec_link</code> fields are fetched without domain allowlisting — reachable by any user with a <code>@google.com</code> or <code>@chromium.org</code> account and edit access to a feature; (2) a <code>path-to-regexp</code> ReDoS vulnerability used in the client-side SPA router (<code>page</code> package). Additionally, <code>npm audit</code> reported a CRITICAL malware advisory for <code>chromestatus-openapi</code>, but investigation confirmed this is a locally-generated workspace package resolved via symlink, not the malicious npm package — the advisory is a false positive caused by npm matching the package name against a squatted registry entry. No hardcoded secrets, no script-injection in CI/CD workflows (all workflows use <code>pull_request</code> not <code>pull_request_target</code>), and no SQL injection or SSTI were found.
+</p>
+
+<h2>Confirmed Vulnerabilities</h2>
+
+<!-- FINDING 1 -->
+<div class="finding sev-high">
+  <div class="finding-header">
+    <span class="finding-id">CSDASH-001</span>
+    <span class="finding-title">Authenticated SSRF via Unvalidated explainer_links / spec_link in AI Pipeline</span>
+    <span class="badge badge-high">HIGH</span>
+  </div>
+  <div class="finding-body">
+    <div class="finding-meta">
+      <span><strong>Component:</strong> <code>framework/gemini_helpers.py</code></span>
+      <span><strong>CVSS (est):</strong> 6.5 (AV:N/AC:L/PR:L/UI:N/S:C/C:L/I:N/A:N)</span>
+      <span><strong>Auth Required:</strong> Yes (@google.com or @chromium.org account + feature edit)</span>
+      <span><strong>CWE:</strong> CWE-918</span>
+    </div>
+    <h4>Description</h4>
+    <p>
+      The AI-powered WPT coverage analysis pipeline (introduced in 2025) fetches the contents of URLs stored in a feature's <code>explainer_links</code> list and <code>spec_link</code> field to provide context to the Gemini LLM. For non-GitHub URLs, <code>_fetch_explainer_content()</code> and <code>_fetch_spec_content()</code> call <code>trafilatura.fetch_url(url)</code> directly without any domain allowlisting or IP-range blocking. An attacker with a <code>@google.com</code> or <code>@chromium.org</code> Google account who has edit access to any feature can set <code>explainer_links</code> or <code>spec_link</code> to an arbitrary URL (including internal GCP metadata URLs), then trigger the WPT coverage pipeline via <code>POST /api/v0/features/&lt;id&gt;/wpt-coverage-analysis</code>, causing the App Engine backend to fetch the attacker-controlled URL.
+    </p>
+    <h4>Vulnerable Code</h4>
+    <pre><code># framework/gemini_helpers.py  lines 48-90
+def _fetch_explainer_content(url: str) -> str:
+  parsed = urlparse(url)
+  # GitHub blob URLs get specialized handling (OK)
+  if _validate_github_domain(parsed.netloc) and "/blob/" in parsed.path:
+    raw_url = url.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/")
+    resp = requests.get(raw_url)
+    return resp.text
+
+  # ALL OTHER URLs — no domain validation at all
+  downloaded = trafilatura.fetch_url(url)   # ← SSRF SINK
+  result = trafilatura.extract(downloaded, ...)
+  return result
+
+# framework/gemini_helpers.py  lines 118-165
+def _fetch_spec_content(url: str) -> str:
+  parsed = urlparse(url)
+  if _validate_github_domain(parsed.netloc) and "/pull/" in parsed.path:
+      ...  # GitHub PRs OK
+  if _validate_github_domain(parsed.netloc) and "/blob/" in parsed.path:
+      ...  # GitHub blobs OK
+
+  # ALL OTHER URLs (W3C, "other webpages") — no domain validation
+  downloaded = trafilatura.fetch_url(url)   # ← SSRF SINK
+  return trafilatura.extract(downloaded, ...)</code></pre>
+    <h4>Trigger Path</h4>
+    <pre><code>1. Attacker (with @google.com / @chromium.org account + feature edit access):
+   PATCH /api/v0/features/&lt;id&gt;
+   { "explainer_links": ["http://169.254.169.254/computeMetadata/v1/"] }
+
+2. POST /api/v0/features/&lt;id&gt;/wpt-coverage-analysis?include_explainer=true
+   → enqueues Cloud Task → GenerateWPTCoverageEvalReportHandler
+   → run_wpt_test_eval_pipeline(feature, include_explainer=True)
+   → _get_explainer_content(feature.explainer_links)
+   → _fetch_explainer_content("http://169.254.169.254/computeMetadata/v1/")
+   → trafilatura.fetch_url("http://169.254.169.254/computeMetadata/v1/")
+   ← GCP metadata server response (returned to Gemini, logged on error)</code></pre>
+    <h4>Exploitability Gate</h4>
+    <p>
+      (1) Attacker-controlled: Yes — <code>explainer_links</code> is a user-editable feature field.<br>
+      (2) No sanitization: Confirmed — no domain/IP allowlist for non-GitHub URLs.<br>
+      (3) Reachable: Yes — the feature update API is public-facing and the WPT pipeline can be triggered by any feature editor.<br>
+      (4) Real impact: GCP instance metadata, internal VPC services, or Redis (localhost:6379) could be probed; response content is passed to Gemini and error messages leak URL details.<br>
+      (5) Not framework-mitigated: App Engine Standard does not automatically block SSRF to the metadata server.
+    </p>
+    <h4>Remediation</h4>
+    <p>Before fetching any URL in <code>_fetch_explainer_content</code> and <code>_fetch_spec_content</code>, resolve the hostname and block requests to RFC-1918 ranges (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16), 169.254.0.0/16 (link-local/metadata), and ::1/128. Alternatively, maintain an explicit allowlist of permitted domains (e.g., github.com, w3.org, tc39.es, whatwg.org, wpt.fyi).</p>
+  </div>
+</div>
+
+<!-- FINDING 2 -->
+<div class="finding sev-high">
+  <div class="finding-header">
+    <span class="finding-id">CSDASH-002</span>
+    <span class="finding-title">path-to-regexp ReDoS in Client-Side SPA Router (page package)</span>
+    <span class="badge badge-high">HIGH</span>
+  </div>
+  <div class="finding-body">
+    <div class="finding-meta">
+      <span><strong>Component:</strong> <code>page@1.x</code> (depends on <code>path-to-regexp@1.2.1</code>)</span>
+      <span><strong>Advisory:</strong> GHSA-9wv6-86v2-598j</span>
+      <span><strong>CVSS:</strong> 7.5 (AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H)</span>
+      <span><strong>Auth Required:</strong> No</span>
+      <span><strong>CWE:</strong> CWE-1333 (ReDoS)</span>
+    </div>
+    <h4>Description</h4>
+    <p>
+      The production client-side router uses the <code>page</code> package (v1.x) which depends on <code>path-to-regexp@1.2.1</code>. This version generates catastrophically backtracking regular expressions from route patterns, allowing an attacker to cause Denial of Service by crafting URL paths that trigger exponential backtracking in the browser's JavaScript engine. While client-side DoS is typically lower impact, this can freeze the browser tab for legitimate users navigating to attacker-crafted links.
+    </p>
+    <h4>Evidence</h4>
+    <pre><code># package.json (production dependency)
+"page": "^1.11.6"
+
+# npm audit result
+HIGH: page → path-to-regexp@1.2.1
+  GHSA-9wv6-86v2-598j: path-to-regexp outputs backtracking regular expressions
+  No fix available via npm audit (requires major version bump)</code></pre>
+    <h4>Exploitability Gate</h4>
+    <p>
+      (1) Attacker-controlled: Yes — URL path is controlled by an attacker who can share a crafted link.<br>
+      (2) No sanitization: Confirmed — path-to-regexp 1.x has no backtracking protection.<br>
+      (3) Reachable: Yes — any page navigation triggers route matching.<br>
+      (4) Real impact: Browser tab freeze (client-side DoS) for any user clicking a malicious link to chromestatus.com.<br>
+      (5) Not framework-mitigated: Modern browsers do not automatically terminate ReDoS in JS.
+    </p>
+    <h4>Remediation</h4>
+    <p>Upgrade <code>page</code> to a version that uses <code>path-to-regexp &gt;= 0.1.10</code> (which includes ReDoS fixes), or migrate to a safer router library. The vulnerability has no <code>fixAvailable</code> path in the current dependency tree, requiring a manual upgrade.</p>
+  </div>
+</div>
+
+<!-- FINDING 3 -->
+<div class="finding sev-medium">
+  <div class="finding-header">
+    <span class="finding-id">CSDASH-003</span>
+    <span class="finding-title">chromestatus-openapi Package Name Squatted on npm Registry (Malware Advisory)</span>
+    <span class="badge badge-medium">MEDIUM</span>
+  </div>
+  <div class="finding-body">
+    <div class="finding-meta">
+      <span><strong>Component:</strong> <code>gen/js/chromestatus-openapi</code> (local workspace package)</span>
+      <span><strong>Advisory:</strong> GHSA-4xg5-39pp-cv4r</span>
+      <span><strong>CWE:</strong> CWE-506 (Embedded Malicious Code)</span>
+      <span><strong>Auth Required:</strong> N/A (supply-chain risk)</span>
+    </div>
+    <h4>Description</h4>
+    <p>
+      <code>npm audit</code> reports a CRITICAL malware advisory for the package name <code>chromestatus-openapi</code> (GHSA-4xg5-39pp-cv4r). Investigation reveals that the npm registry hosts a security-holding package at <code>chromestatus-openapi@0.0.1-security</code> — meaning someone previously registered this package name on the public registry (likely as a dependency confusion attack). The project's actual package is locally generated code in <code>gen/js/chromestatus-openapi/</code> and is resolved via npm workspaces as a local symlink (<code>"resolved": "gen/js/chromestatus-openapi"</code> in <code>package-lock.json</code>).
+    </p>
+    <p>
+      <strong>Current status:</strong> The local package is correctly resolved from the monorepo and is NOT pulling the malicious npm package. However, the package name is NOT marked <code>"private": true</code> in its <code>package.json</code>, and there is no <code>.npmrc</code> configured to block public registry fallback. A misconfiguration or a fresh install in a CI environment without a proper workspace setup could result in pulling the malicious squatted package.
+    </p>
+    <h4>Evidence</h4>
+    <pre><code># gen/js/chromestatus-openapi/package.json
+{
+  "name": "chromestatus-openapi",
+  "version": "1.0.0",
+  "private": null,   // ← NOT set to true
+  ...
+}
+
+# npm registry (https://registry.npmjs.org/chromestatus-openapi)
+{ "name": "chromestatus-openapi", "description": "security holding package",
+  "versions": ["0.0.1-security"] }  // ← Squatted/claimed by npm security team
+
+# package-lock.json (correct current resolution)
+"node_modules/chromestatus-openapi": {
+  "resolved": "gen/js/chromestatus-openapi",
+  "link": true   // ← correct local symlink
+}</code></pre>
+    <h4>Remediation</h4>
+    <p>Add <code>"private": true</code> to <code>gen/js/chromestatus-openapi/package.json</code> to prevent accidental publishing and to signal to npm that this package should never be fetched from the public registry. Consider adding a <code>.npmrc</code> entry to enforce workspace resolution. The npm security team has already squatted the name with a placeholder, which limits immediate external risk.</p>
+  </div>
+</div>
+
+<!-- FINDING 4 -->
+<div class="finding sev-medium">
+  <div class="finding-header">
+    <span class="finding-id">CSDASH-004</span>
+    <span class="finding-title">lodash.template Command Injection (devDependency)</span>
+    <span class="badge badge-medium">MEDIUM</span>
+  </div>
+  <div class="finding-body">
+    <div class="finding-meta">
+      <span><strong>Component:</strong> <code>lodash.template</code> (devDependency via build tooling)</span>
+      <span><strong>Advisory:</strong> GHSA-35jh-r3h4-6jhm</span>
+      <span><strong>Severity:</strong> HIGH (npm) / MEDIUM here (devDependency only)</span>
+      <span><strong>CWE:</strong> CWE-94</span>
+    </div>
+    <h4>Description</h4>
+    <p>
+      <code>lodash.template</code> (a devDependency in the build chain) contains a known command injection vulnerability. The function evaluates template strings using JavaScript's <code>Function</code> constructor, allowing arbitrary code execution when an attacker controls the template string. This is a <strong>devDependency used only during the build/test process</strong> and is not included in the deployed production application — reducing severity from HIGH to MEDIUM.
+    </p>
+    <h4>Remediation</h4>
+    <p>Update the build toolchain to eliminate the dependency on <code>lodash.template</code>, or pin to a non-vulnerable version if available. Since this is a devDependency, priority is lower but CI/CD environments processing untrusted input could still be affected.</p>
+  </div>
+</div>
+
+<!-- FINDING 5 -->
+<div class="finding sev-low">
+  <div class="finding-header">
+    <span class="finding-id">CSDASH-005</span>
+    <span class="finding-title">Werkzeug 0.16.1 with Critical CVEs in Generated OpenAPI Code</span>
+    <span class="badge badge-low">LOW</span>
+  </div>
+  <div class="finding-body">
+    <div class="finding-meta">
+      <span><strong>Component:</strong> <code>gen/py/chromestatus_openapi/requirements.txt</code></span>
+      <span><strong>CVEs:</strong> CVE-2023-25577, CVE-2024-34069</span>
+      <span><strong>Auth Required:</strong> N/A (not in production)</span>
+    </div>
+    <h4>Description</h4>
+    <p>
+      The auto-generated OpenAPI Python server stub in <code>gen/py/chromestatus_openapi/requirements.txt</code> pins <code>werkzeug == 0.16.1</code> for Python 3.4/3.5 compatibility. This version is affected by CVE-2023-25577 (high resource consumption in multipart form parsing) and CVE-2024-34069 (RCE via debugger PIN in dev mode). The <strong>production deployment uses Werkzeug 3.1.6</strong> (pinned in the main <code>requirements.txt</code>) which is not affected. The generated stub code is used only for local development tooling.
+    </p>
+    <h4>Remediation</h4>
+    <p>Update or remove the legacy Python 3.4/3.5 conditional in the generated requirements stub. If the generated code is never actually used in dev, remove the dependency file to eliminate the vulnerability signal from tooling scans.</p>
+  </div>
+</div>
+
+<h2>&#x1F4E6; Dependency Confusion</h2>
+<p class="section-empty">No dependency confusion vulnerabilities confirmed. The <code>chromestatus-openapi</code> package name has been squatted on npm by the npm security team (security holding package), but the project correctly resolves it as a local workspace package via symlink. No other internal-looking package names were found exposed on the public registry. No <code>.npmrc</code> registry overrides or pip.conf files are present.</p>
+
+<h2>Known Dependency CVEs</h2>
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>Severity</th>
+      <th>Package</th>
+      <th>Vulnerability</th>
+      <th>Advisory</th>
+      <th>In Production?</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><span class="badge badge-high">HIGH</span></td>
+      <td><code>path-to-regexp@1.2.1</code> (via <code>page</code>)</td>
+      <td>ReDoS via backtracking regular expressions</td>
+      <td><a href="https://github.com/advisories/GHSA-9wv6-86v2-598j">GHSA-9wv6-86v2-598j</a></td>
+      <td>Yes (client-side router)</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-high">HIGH</span></td>
+      <td><code>lodash.template</code></td>
+      <td>Command Injection via template evaluation</td>
+      <td><a href="https://github.com/advisories/GHSA-35jh-r3h4-6jhm">GHSA-35jh-r3h4-6jhm</a></td>
+      <td>No (devDependency)</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-high">HIGH</span></td>
+      <td><code>minimatch</code> (multiple versions)</td>
+      <td>ReDoS via multiple advisory variants</td>
+      <td><a href="https://github.com/advisories/GHSA-3ppc-4f35-3m26">GHSA-3ppc-4f35-3m26</a>, <a href="https://github.com/advisories/GHSA-7r86-cg39-jmmj">GHSA-7r86-cg39-jmmj</a>, <a href="https://github.com/advisories/GHSA-23c5-xmqv-rm74">GHSA-23c5-xmqv-rm74</a></td>
+      <td>No (devDependency build tools)</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-high">HIGH</span></td>
+      <td><code>koa</code></td>
+      <td>Host Header Injection via ctx.hostname</td>
+      <td><a href="https://github.com/advisories/GHSA-7gcc-r8m5-44qm">GHSA-7gcc-r8m5-44qm</a></td>
+      <td>No (indirect devDependency)</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-critical">CRITICAL</span></td>
+      <td><code>basic-ftp</code></td>
+      <td>Path Traversal in downloadToDir()</td>
+      <td><a href="https://github.com/advisories/GHSA-5rq4-664w-9x2c">GHSA-5rq4-664w-9x2c</a></td>
+      <td>No (transitive devDependency)</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-high">HIGH</span></td>
+      <td><code>werkzeug@0.16.1</code></td>
+      <td>CVE-2023-25577 multipart DoS, CVE-2024-34069 RCE in debug mode</td>
+      <td>CVE-2023-25577, CVE-2024-34069</td>
+      <td>No (generated OpenAPI stub, old Python compat)</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-medium">MEDIUM</span></td>
+      <td><code>ajv</code></td>
+      <td>ReDoS when using $data option</td>
+      <td><a href="https://github.com/advisories/GHSA-2g4f-4pwh-qvx6">GHSA-2g4f-4pwh-qvx6</a></td>
+      <td>No (build tool/devDependency)</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>&#x1F511; Hardcoded Secrets</h2>
+<p class="section-empty">No hardcoded secrets found. Searched for AWS keys (AKIA...), Google API keys (AIza...), GitHub PATs (ghp_...), JWT tokens, PEM private keys, and password/api_key assignments across all source files. Credentials are correctly retrieved from Google Cloud Secret Manager at runtime.</p>
+
+<h2>Patterns Investigated but Excluded</h2>
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>Pattern Found</th>
+      <th>Reason Excluded</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>innerHTML</code> in <code>chromedash-ot-extension-page.ts:104</code></td>
+      <td>The <code>milestone</code> value is validated by <code>extensionMilestoneIsValid()</code> before use — only digits 0-999 are accepted. The interpolated date from <code>Date.toLocaleDateString()</code> is browser-generated. XSS is not exploitable.</td>
+    </tr>
+    <tr>
+      <td><code>pull_request_target</code> CI/CD script injection</td>
+      <td>All workflow files (ci.yml, playwright.yml, web_tests.yml, codeql-analysis.yml, scorecards.yml) use <code>pull_request</code> or <code>push</code> triggers — not <code>pull_request_target</code>. No untrusted issue/PR metadata is interpolated into <code>run:</code> steps.</td>
+    </tr>
+    <tr>
+      <td><code>subprocess.shell=True</code>, <code>os.system</code></td>
+      <td>No instances found in non-test Python code.</td>
+    </tr>
+    <tr>
+      <td><code>eval()</code>, <code>exec()</code> in Python</td>
+      <td>No instances found in non-test, non-commented code.</td>
+    </tr>
+    <tr>
+      <td><code>yaml.load()</code> without Loader</td>
+      <td>No instances found.</td>
+    </tr>
+    <tr>
+      <td><code>render_template_string</code> / Jinja2 SSTI</td>
+      <td>No instances of <code>render_template_string</code> or <code>Environment.from_string</code> found. Jinja2 templates are loaded from files, not user input.</td>
+    </tr>
+    <tr>
+      <td><code>cursor.execute</code> with string formatting</td>
+      <td>The application uses Google Cloud Datastore (NDB ORM), not SQL. No cursor.execute calls found.</td>
+    </tr>
+    <tr>
+      <td><code>verify=False</code> in <code>gen/py/webstatus_openapi/rest.py</code></td>
+      <td>This is auto-generated OpenAPI client code in a generated stub library, not production application code. The production application does not use this module for actual requests.</td>
+    </tr>
+    <tr>
+      <td>CSRF protection</td>
+      <td>XSRF tokens are enforced via <code>require_xsrf_token()</code> in BaseHandler. No <code>csrf_exempt</code> decorators found. <code>IS_INTERNAL_HANDLER</code> is only set on Cloud Task handlers which are protected by <code>require_task_header()</code> (X-AppEngine-QueueName header).</td>
+    </tr>
+    <tr>
+      <td>Weak crypto: MD5/SHA1</td>
+      <td>No instances of <code>hashlib.md5</code> or <code>hashlib.sha1</code> found in non-test code.</td>
+    </tr>
+    <tr>
+      <td><code>chromestatus-openapi</code> malware (GHSA-4xg5-39pp-cv4r)</td>
+      <td>npm audit false positive. The package is resolved from the local workspace symlink (<code>gen/js/chromestatus-openapi</code>), not the public npm registry. The npm security team has claimed the name as a security holder. No malicious code is present in the local package.</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>Remediation Priority</h2>
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>Priority</th>
+      <th>Finding</th>
+      <th>Effort</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><span class="p1">P1 — High</span></td>
+      <td>CSDASH-001: Add domain/IP allowlist or blocklist to <code>_fetch_explainer_content()</code> and <code>_fetch_spec_content()</code> to prevent SSRF against GCP metadata and internal services</td>
+      <td>Low (add IP validation before trafilatura.fetch_url calls; ~20 lines)</td>
+    </tr>
+    <tr>
+      <td><span class="p1">P1 — High</span></td>
+      <td>CSDASH-002: Upgrade <code>page</code> router or replace it to eliminate <code>path-to-regexp@1.x</code> ReDoS</td>
+      <td>Medium (requires testing SPA routing after upgrade)</td>
+    </tr>
+    <tr>
+      <td><span class="p2">P2 — Medium</span></td>
+      <td>CSDASH-003: Add <code>"private": true</code> to <code>gen/js/chromestatus-openapi/package.json</code></td>
+      <td>Trivial (1-line change)</td>
+    </tr>
+    <tr>
+      <td><span class="p2">P2 — Medium</span></td>
+      <td>CSDASH-004: Audit and update build toolchain to eliminate <code>lodash.template</code> devDependency</td>
+      <td>Low-Medium</td>
+    </tr>
+    <tr>
+      <td>P3 — Low</td>
+      <td>CSDASH-005: Remove legacy Python 3.4/3.5 <code>werkzeug==0.16.1</code> conditional from generated OpenAPI stub requirements</td>
+      <td>Trivial</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<details><summary>Methodology</summary>
+<p>Multi-phase analysis performed on commit <code>cd417cc</code> (main branch, depth=50). Phase 1: Secret detection using 7 regex patterns across all source files (no matches). Phase 2: Dependency analysis via <code>npm audit --json</code> and <code>trivy fs</code>; all 13 npm advisory entries manually verified for production vs. devDependency status. Phase 2.5: Dependency confusion check — all package names checked against npm registry; <code>chromestatus-openapi</code> found to be squatted but project correctly resolves locally. Phase 3: Static analysis for XSS (innerHTML, dangerouslySetInnerHTML), eval/code injection, command injection, prototype pollution, path traversal, SSRF (Python requests and JS fetch). Phase 4: Auth/authorization review — CSRF token enforcement, SSL verification, permission decorators. Phase 5: Crypto review (no weak algorithms found). Phase 6: All 5 CI/CD workflow files read in full; no script injection or pull_request_target misuse found. Phase 9: 5-gate exploitability verification applied to all candidate findings.</p>
+</details>
+
+<footer>Generated by Claude Code Security Scanner &mdash; 2026-03-01 &mdash; For authorized use only.</footer>
+</body>
+</html>

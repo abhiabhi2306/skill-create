@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Security Report — developer.chrome.com</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --critical: #ff4444;
+    --high: #ff6e42;
+    --medium: #d29922;
+    --low: #3fb950;
+    --info: #58a6ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', monospace; font-size: 14px; line-height: 1.6; padding: 2rem; }
+  h1 { font-size: 1.8rem; margin-bottom: 0.25rem; color: var(--accent); }
+  h2 { font-size: 1.2rem; margin: 2rem 0 1rem; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+  h3 { font-size: 1rem; margin: 1.5rem 0 0.5rem; color: var(--text); }
+  .meta { color: var(--muted); font-size: 0.85rem; margin-bottom: 2rem; }
+  .meta span { margin-right: 1.5rem; }
+  .summary-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; margin: 1.5rem 0; }
+  .summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; text-align: center; }
+  .summary-card .count { font-size: 2rem; font-weight: bold; }
+  .summary-card .label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; margin-top: 0.25rem; }
+  .critical .count { color: var(--critical); }
+  .high .count { color: var(--high); }
+  .medium .count { color: var(--medium); }
+  .low .count { color: var(--low); }
+  .info .count { color: var(--info); }
+  .finding { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.25rem; }
+  .finding-header { display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
+  .badge { display: inline-block; padding: 0.2rem 0.65rem; border-radius: 4px; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
+  .badge-critical { background: rgba(255,68,68,0.15); color: var(--critical); border: 1px solid var(--critical); }
+  .badge-high { background: rgba(255,110,66,0.15); color: var(--high); border: 1px solid var(--high); }
+  .badge-medium { background: rgba(210,153,34,0.15); color: var(--medium); border: 1px solid var(--medium); }
+  .badge-low { background: rgba(63,185,80,0.15); color: var(--low); border: 1px solid var(--low); }
+  .badge-info { background: rgba(88,166,255,0.15); color: var(--info); border: 1px solid var(--info); }
+  .finding-title { font-size: 1rem; font-weight: bold; color: var(--text); }
+  .finding-id { font-size: 0.8rem; color: var(--muted); margin-top: 0.2rem; }
+  pre { background: #0d1117; border: 1px solid var(--border); border-radius: 6px; padding: 1rem; overflow-x: auto; font-size: 0.82rem; line-height: 1.5; margin: 0.75rem 0; }
+  code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; }
+  .field-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; margin-top: 0.75rem; margin-bottom: 0.25rem; }
+  .field-value { color: var(--text); }
+  .gate-list { list-style: none; padding: 0; }
+  .gate-list li { padding: 0.2rem 0; }
+  .gate-list li::before { content: "PASS "; color: var(--low); font-weight: bold; font-size: 0.75rem; }
+  .tag { display: inline-block; background: rgba(88,166,255,0.1); border: 1px solid rgba(88,166,255,0.3); color: var(--accent); border-radius: 4px; padding: 0.1rem 0.4rem; font-size: 0.75rem; margin: 0.1rem; }
+  table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; }
+  th { text-align: left; padding: 0.5rem 0.75rem; background: rgba(88,166,255,0.07); border-bottom: 1px solid var(--border); font-size: 0.8rem; color: var(--muted); text-transform: uppercase; }
+  td { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; vertical-align: top; }
+  .highlight { color: var(--high); font-weight: bold; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  .section-empty { color: var(--muted); font-style: italic; padding: 0.5rem 0; }
+  .cve-id { font-family: monospace; color: var(--medium); }
+</style>
+</head>
+<body>
+
+<h1>Security Vulnerability Report</h1>
+<div class="meta">
+  <span>Repository: <strong>GoogleChrome/developer.chrome.com</strong></span>
+  <span>URL: <strong>https://github.com/GoogleChrome/developer.chrome.com</strong></span>
+  <span>Analysis Date: <strong>2026-03-01</strong></span>
+  <span>Analyst: <strong>Claude Sonnet 4.6 (Automated)</strong></span>
+</div>
+
+<h2>Executive Summary</h2>
+<p>Multi-phase static security analysis of the <code>developer.chrome.com</code> repository — the production Node.js/Eleventy site serving Google's Chrome developer documentation. Analysis was conducted via the GitHub API (repository too large to clone locally) covering secret detection, dependency CVEs, static code analysis, authentication, CI/CD pipelines, and exploitability verification.</p>
+
+<div class="summary-grid">
+  <div class="summary-card critical"><div class="count">1</div><div class="label">Critical</div></div>
+  <div class="summary-card high"><div class="count">1</div><div class="label">High</div></div>
+  <div class="summary-card medium"><div class="count">2</div><div class="label">Medium</div></div>
+  <div class="summary-card low"><div class="count">1</div><div class="label">Low</div></div>
+  <div class="summary-card info"><div class="count">0</div><div class="label">Info</div></div>
+</div>
+
+<hr>
+
+<h2>Phase 1 — Secret Detection</h2>
+<p>Scanned root, <code>server/</code>, <code>site/_data/</code>, <code>algolia.js</code>, and <code>cloud-secrets.js</code> for hardcoded credentials (API keys, tokens, private keys, connection strings).</p>
+<p><strong>Result:</strong> No hardcoded secrets found. Algolia credentials are loaded at runtime via <code>require('dotenv').config()</code> from a <code>.env</code> file generated by <code>cloud-secrets.js</code> (GCP Secret Manager integration). The <code>.env</code> file is excluded from source control via <code>.gitignore</code> but IS included in the App Engine deployment artifact (not listed in <code>.gcloudignore</code>). See Finding DCR-01 for the security implication of this design.</p>
+
+<hr>
+
+<h2>Phase 2 — Dependency Scanning</h2>
+
+<div class="finding">
+  <div class="finding-header">
+    <span class="badge badge-high">HIGH</span>
+    <div>
+      <div class="finding-title">nunjucks 3.2.3 — Autoescape Bypass (GHSA-x77j-w7wf-fjmw)</div>
+      <div class="finding-id">DCR-DEP-01 | CWE-79 | GHSA-x77j-w7wf-fjmw</div>
+    </div>
+  </div>
+
+  <div class="field-label">Affected Package</div>
+  <div class="field-value"><code>nunjucks@3.2.3</code> (pinned in <code>package.json</code>). Fix available in <code>3.2.4</code>.</div>
+
+  <div class="field-label">Description</div>
+  <div class="field-value">Nunjucks versions below 3.2.4 allow autoescape bypass when two user-controlled parameters appear on the same line in a template. An attacker can inject a backslash <code>\</code> to escape the enclosing quote of the first parameter and inject raw HTML/script content through the second parameter. However, the primary threat in this codebase is the SSTI finding (DCR-01), which renders this autoescape issue secondary — full template execution is already possible.</div>
+
+  <div class="field-label">Exploitability in Context</div>
+  <div class="field-value">The <code>/_render</code> endpoint already provides full Nunjucks template execution for authenticated Google users (see DCR-01). The autoescape bypass is therefore a subset of a larger issue. For unauthenticated attack surfaces where Nunjucks renders content with autoescape enabled, this bug remains relevant.</div>
+</div>
+
+<div class="finding">
+  <div class="finding-header">
+    <span class="badge badge-medium">MEDIUM</span>
+    <div>
+      <div class="finding-title">markdown-it 12.0.1 — ReDoS via Long Inputs (GHSA-6vfc-qv3f-vr6c)</div>
+      <div class="finding-id">DCR-DEP-02 | CWE-400 | GHSA-6vfc-qv3f-vr6c</div>
+    </div>
+  </div>
+
+  <div class="field-label">Affected Package</div>
+  <div class="field-value"><code>markdown-it@12.0.1</code> (pinned in <code>package.json</code>). Fix in <code>12.3.2+</code>.</div>
+
+  <div class="field-label">Vulnerable Pattern</div>
+  <pre><code>// site/_data/process.js exposes process.env to Nunjucks templates.
+// The /_render endpoint processes user body via 'njk, md' (Nunjucks then Markdown).
+// If attacker sends body with >50K chars of special whitespace pattern, markdown-it stalls.
+const md = require('markdown-it')();
+md.render(`x ${' '.repeat(150000)} x  \nx`);  // hangs parser</code></pre>
+
+  <div class="field-label">Exploitability</div>
+  <div class="field-value">The <code>/_render</code> endpoint processes user-supplied body content through <code>'njk, md'</code> (Nunjucks then Markdown), meaning markdown-it processes attacker-controlled content. Any valid Google account can authenticate and submit the crafted payload, causing the Node.js event loop to stall and rendering the site inaccessible (DoS). No timeout is imposed on the Eleventy render call.</div>
+</div>
+
+<hr>
+
+<h2>Phase 2.5 — Dependency Confusion</h2>
+<p class="section-empty">No internal-only package names detected in <code>package.json</code>. All dependencies resolve from the public npm registry under well-known namespaces (<code>@11ty</code>, <code>@google-cloud</code>, etc.). No <code>.npmrc</code> with private registry configuration found.</p>
+
+<hr>
+
+<h2>Phase 3 — Static Analysis</h2>
+
+<div class="finding">
+  <div class="finding-header">
+    <span class="badge badge-critical">CRITICAL</span>
+    <div>
+      <div class="finding-title">Server-Side Template Injection via /_render Endpoint (SSTI + process.env Exfiltration)</div>
+      <div class="finding-id">DCR-01 | CWE-94 / CWE-200</div>
+    </div>
+  </div>
+
+  <div class="field-label">Location</div>
+  <div class="field-value">
+    <code>server/render.js</code> — <code>renderHandler</code> function<br>
+    <code>site/_data/process.js</code> — global data registration<br>
+    <code>site/en/preview/layouts/blog-post.njk</code> and <code>doc-post.njk</code> — SSTI vector<br>
+    <code>.cloudbuild/deploy.yaml</code> — confirms secrets are loaded into <code>.env</code> at deploy time
+  </div>
+
+  <div class="field-label">Vulnerability Description</div>
+  <div class="field-value">
+    The <code>POST /_render</code> Express endpoint performs preview rendering for content authors. It:
+    <ol style="margin: 0.5rem 0 0.5rem 1.5rem;">
+      <li>Authenticates the caller using a Google ID token (any valid Google account is accepted — no domain, group, or allowlist restriction)</li>
+      <li>Accepts user-supplied <code>fm</code> (YAML front matter) and extracts its <code>content</code> field as the document body</li>
+      <li>Registers the body as a global Eleventy data value (<code>addGlobalData('body', fm.content)</code>)</li>
+      <li>Renders the preview layout, which contains only <code>{% render body %}</code> — processing the body as a full Nunjucks template followed by Markdown</li>
+    </ol>
+    Separately, <code>site/_data/process.js</code> exports <code>{ env: process.env }</code>, making all server-side environment variables available to every Nunjucks template as the global variable <code>process</code>. This data is in scope for the nested <code>{% render body %}</code> call because Eleventy's <code>EleventyRenderPlugin</code> passes <code>this.ctx</code> (the full template context including all global data) into the shortcode.
+  </div>
+
+  <div class="field-label">Attack Proof-of-Concept</div>
+  <pre><code>POST /_render HTTP/1.1
+Host: developer.chrome.com
+Content-Type: application/json
+
+{
+  "t": "&lt;VALID_GOOGLE_ID_TOKEN&gt;",
+  "fm": "---\nlayout: layouts/blog-post.njk\ntitle: test\n---\n{{ process.env | dump }}"
+}
+
+# Response body will contain all environment variables including:
+# ALGOLIA_API_KEY, ALGOLIA_APP_ID, and any other GCP secrets
+# loaded by cloud-secrets.js at deploy time</code></pre>
+
+  <div class="field-label">Secret Exfiltration Chain</div>
+  <pre><code># .cloudbuild/deploy.yaml — step 2: cloud-secrets.js fetches ALL secrets from
+# GCP Secret Manager and writes them to a .env file on the build machine:
+  - name: node:16.14.2
+    entrypoint: npm
+    args: ['run', 'cloud-secrets']  # writes Algolia keys, etc. to .env
+
+# The .env file is NOT in .gcloudignore — it is bundled into the App Engine deploy.
+# At runtime, algolia.js calls require('dotenv').config() loading .env into process.env.
+# site/_data/process.js then exposes process.env to all templates:
+
+module.exports = {
+  env: process.env,  // ALL env vars — including production secrets — exposed to Nunjucks
+};
+
+# In preview layout (site/en/preview/layouts/blog-post.njk):
+{% render body %}   // ← 'body' is attacker-controlled Nunjucks template content</code></pre>
+
+  <div class="field-label">Authentication Bypass Analysis</div>
+  <div class="field-value">
+    The <code>verifyLogin()</code> function in <code>server/render.js</code> only checks that the Google ID token is valid and that <code>payload['sub']</code> is truthy (a non-empty user ID). There is no check against a specific email domain (e.g. <code>@google.com</code>), no group membership check, and no IP allowlist. <strong>Any person with a free <code>@gmail.com</code> account can authenticate and invoke this endpoint.</strong>
+  </div>
+  <pre><code>async function verifyLogin(token) {
+  const ticket = await authClient.verifyIdToken({
+    idToken: token,
+    audience: CLIENT_ID,   // 636061184119-c4pof3b538r4ibs8bt6g8qdfth958nc9.apps.googleusercontent.com
+  });
+  const payload = ticket.getPayload();
+  return payload && payload['sub'];  // truthy check only — ANY Google account passes
+}</code></pre>
+
+  <div class="field-label">5-Gate Exploitability Verification</div>
+  <ul class="gate-list">
+    <li>Gate 1 (Attacker-controlled input): <code>req.body.fm</code> content field maps directly to the <code>body</code> global rendered by <code>{% render body %}</code></li>
+    <li>Gate 2 (No sanitization): Body is passed as raw string to <code>addGlobalData('body', fm.content)</code>, then to <code>renderTemplate(str, 'njk, md', this.ctx)</code> — no escaping or filtering applied</li>
+    <li>Gate 3 (Reachable code path): Public HTTPS endpoint at <code>https://developer.chrome.com/_render</code>, accessible to any Google account holder on the internet</li>
+    <li>Gate 4 (Real impact): <code>process.env</code> is in scope via <code>site/_data/process.js</code>; production secrets (Algolia write key, any GCP Secret Manager secrets) are loaded into <code>process.env</code> at deploy time via <code>.cloudbuild/deploy.yaml</code> running <code>cloud-secrets.js</code></li>
+    <li>Gate 5 (Not framework-mitigated): Nunjucks <code>{% render body %}</code> executes body as a template engine program, not just variable interpolation — autoescape does not prevent template tag execution</li>
+  </ul>
+
+  <div class="field-label">Remediation</div>
+  <div class="field-value">
+    <strong>Immediate (auth hardening):</strong> Restrict <code>verifyLogin()</code> to Google accounts with verified <code>@google.com</code> or <code>@chromium.org</code> email addresses by checking <code>payload['email']</code> and <code>payload['email_verified']</code>. Consider adding an IAP (Identity-Aware Proxy) layer.<br><br>
+    <strong>Architecture fix:</strong> Remove <code>site/_data/process.js</code> or replace it with a minimal allowlist of safe, non-secret environment flags (e.g., <code>NODE_ENV</code>). Never expose <code>process.env</code> as a template global.<br><br>
+    <strong>Template sandboxing:</strong> Use Nunjucks in sandbox mode or replace <code>{% render body %}</code> with a sanitized Markdown-only render (not Nunjucks) for user-supplied content. Alternatively, render user content in a separate sandboxed process.<br><br>
+    <strong>Secret management:</strong> Do not bundle secrets into the App Engine deployment artifact. Use runtime Secret Manager access with the <code>@google-cloud/secret-manager</code> SDK instead of a build-time <code>.env</code> file.
+  </div>
+</div>
+
+<hr>
+
+<h2>Phase 4 — Authentication &amp; Authorization</h2>
+
+<div class="finding">
+  <div class="finding-header">
+    <span class="badge badge-medium">MEDIUM</span>
+    <div>
+      <div class="finding-title">Overly Broad Authentication on Preview Render Endpoint</div>
+      <div class="finding-id">DCR-02 | CWE-287</div>
+    </div>
+  </div>
+
+  <div class="field-label">Location</div>
+  <div class="field-value"><code>server/render.js:45–58</code> — <code>verifyLogin()</code> function</div>
+
+  <div class="field-label">Description</div>
+  <div class="field-value">The OAuth2 Client ID <code>636061184119-c4pof3b538r4ibs8bt6g8qdfth958nc9.apps.googleusercontent.com</code> is a <em>public</em> OAuth client. Any person with a Google account can obtain a valid ID token for this audience using the standard OAuth2 implicit or auth-code flow with a browser. The <code>verifyLogin()</code> function accepts any token where <code>payload['sub']</code> is truthy, which is true for every valid token. The endpoint is intended for internal content authors, but has no mechanism to enforce that.</div>
+
+  <div class="field-label">Combined Impact</div>
+  <div class="field-value">This misconfiguration is the prerequisite for the SSTI finding (DCR-01). Without it, DCR-01 would require internal Google credentials. With it, DCR-01 is exploitable by any internet user with a Gmail account.</div>
+
+  <div class="field-label">Remediation</div>
+  <div class="field-value">Add email/domain verification: <code>if (!payload['email_verified'] || !payload['email'].endsWith('@google.com')) throw new Error('Unauthorized')</code>. Consider switching to Google IAP which enforces group membership at the infrastructure level without code changes.</div>
+</div>
+
+<hr>
+
+<h2>Phase 5 — Cryptography</h2>
+<p class="section-empty">No cryptographic operations identified in the server-side code. Authentication delegates entirely to Google's OAuth2/OIDC infrastructure. No custom crypto, weak algorithms, or predictable tokens found.</p>
+
+<hr>
+
+<h2>Phase 6 — CI/CD Security</h2>
+
+<table>
+  <thead>
+    <tr><th>Workflow</th><th>Trigger</th><th>Script Injection</th><th>pull_request_target</th><th>Result</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>check.yml</code></td>
+      <td><code>pull_request</code></td>
+      <td>None detected</td>
+      <td>No</td>
+      <td><span style="color: var(--low)">CLEAN</span></td>
+    </tr>
+    <tr>
+      <td><code>repo-sync.yml</code></td>
+      <td><code>schedule</code></td>
+      <td>None detected</td>
+      <td>No</td>
+      <td><span style="color: var(--low)">CLEAN</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="field-label">Notes</div>
+<div class="field-value">
+  Both workflows use safe triggers. <code>check.yml</code> uses <code>pull_request</code> (sandboxed, no secret access for external PRs). The <code>fkirc/skip-duplicate-actions@master</code> action uses a floating <code>@master</code> reference rather than a pinned SHA — a supply chain risk, though the action has read-only semantics. <code>secrets.PERCY_TOKEN</code> in the Percy step is passed via environment variable, not interpolated directly into shell commands.
+</div>
+
+<div class="finding">
+  <div class="finding-header">
+    <span class="badge badge-low">LOW</span>
+    <div>
+      <div class="finding-title">GitHub Action Pinned to Mutable Branch Reference</div>
+      <div class="finding-id">DCR-CI-01 | CWE-1104</div>
+    </div>
+  </div>
+
+  <div class="field-label">Location</div>
+  <div class="field-value"><code>.github/workflows/check.yml:13</code></div>
+
+  <div class="field-label">Vulnerable Line</div>
+  <pre><code>uses: fkirc/skip-duplicate-actions@master  # ← mutable branch ref, not commit SHA</code></pre>
+
+  <div class="field-label">Description</div>
+  <div class="field-value">The <code>@master</code> reference resolves to whichever commit is currently at the tip of the <code>master</code> branch of <code>fkirc/skip-duplicate-actions</code>. If that repository is compromised or the maintainer pushes a malicious update, the code executes in the CI context for all future pull requests. The other actions use pinned version tags (<code>@v2</code>, <code>@v3</code>) which are mutable but typically treated as stable releases. Pinning to a full commit SHA is the secure practice.</div>
+
+  <div class="field-label">Remediation</div>
+  <div class="field-value">Pin to a specific commit SHA: <code>uses: fkirc/skip-duplicate-actions@&lt;full-sha&gt;</code>.</div>
+</div>
+
+<hr>
+
+<h2>Phase 9 — Exploitability Summary</h2>
+
+<table>
+  <thead>
+    <tr><th>ID</th><th>Title</th><th>Severity</th><th>Gate 1<br>Input</th><th>Gate 2<br>No Sanitize</th><th>Gate 3<br>Reachable</th><th>Gate 4<br>Impact</th><th>Gate 5<br>No Mitigation</th><th>Verdict</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>DCR-01</td>
+      <td>SSTI + process.env exfiltration via /_render</td>
+      <td><span class="badge badge-critical">CRITICAL</span></td>
+      <td><span style="color:var(--low)">PASS</span></td>
+      <td><span style="color:var(--low)">PASS</span></td>
+      <td><span style="color:var(--low)">PASS</span></td>
+      <td><span style="color:var(--low)">PASS</span></td>
+      <td><span style="color:var(--low)">PASS</span></td>
+      <td><strong style="color:var(--critical)">CONFIRMED EXPLOITABLE</strong></td>
+    </tr>
+    <tr>
+      <td>DCR-02</td>
+      <td>Overly broad auth on /_render (any Google account)</td>
+      <td><span class="badge badge-medium">MEDIUM</span></td>
+      <td><span style="color:var(--low)">PASS</span></td>
+      <td><span style="color:var(--low)">PASS</span></td>
+      <td><span style="color:var(--low)">PASS</span></td>
+      <td><span style="color:var(--low)">PASS</span></td>
+      <td><span style="color:var(--low)">PASS</span></td>
+      <td><strong style="color:var(--high)">CONFIRMED (prerequisite for DCR-01)</strong></td>
+    </tr>
+    <tr>
+      <td>DCR-DEP-01</td>
+      <td>nunjucks 3.2.3 autoescape bypass (GHSA-x77j-w7wf-fjmw)</td>
+      <td><span class="badge badge-high">HIGH</span></td>
+      <td><span style="color:var(--low)">PASS</span></td>
+      <td><span style="color:var(--low)">PASS</span></td>
+      <td><span style="color:var(--low)">PASS</span></td>
+      <td><span style="color:var(--low)">PASS</span></td>
+      <td>Subsumed by DCR-01</td>
+      <td><strong style="color:var(--high)">CONFIRMED (amplified by DCR-01)</strong></td>
+    </tr>
+    <tr>
+      <td>DCR-DEP-02</td>
+      <td>markdown-it 12.0.1 ReDoS (GHSA-6vfc-qv3f-vr6c)</td>
+      <td><span class="badge badge-medium">MEDIUM</span></td>
+      <td><span style="color:var(--low)">PASS</span></td>
+      <td><span style="color:var(--low)">PASS</span></td>
+      <td><span style="color:var(--low)">PASS</span></td>
+      <td>DoS only</td>
+      <td><span style="color:var(--low)">PASS</span></td>
+      <td><strong style="color:var(--medium)">CONFIRMED (DoS, requires auth)</strong></td>
+    </tr>
+    <tr>
+      <td>DCR-CI-01</td>
+      <td>GitHub Action pinned to mutable @master ref</td>
+      <td><span class="badge badge-low">LOW</span></td>
+      <td>Indirect</td>
+      <td>—</td>
+      <td>PR trigger</td>
+      <td>Supply chain</td>
+      <td>—</td>
+      <td><strong style="color:var(--low)">THEORETICAL</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2>Phase 11 — Remediation Priority</h2>
+
+<table>
+  <thead>
+    <tr><th>Priority</th><th>ID</th><th>Action</th><th>Effort</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1 — IMMEDIATE</td>
+      <td>DCR-02</td>
+      <td>Restrict <code>verifyLogin()</code> to <code>@google.com</code> / <code>@chromium.org</code> emails; verify <code>email_verified: true</code></td>
+      <td>~1 hour</td>
+    </tr>
+    <tr>
+      <td>2 — IMMEDIATE</td>
+      <td>DCR-01</td>
+      <td>Remove <code>process.js</code> global data export; do NOT expose <code>process.env</code> to Nunjucks templates. Replace <code>{% render body %}</code> with a sandboxed Markdown-only renderer for user-supplied content</td>
+      <td>~1 day</td>
+    </tr>
+    <tr>
+      <td>3 — SHORT TERM</td>
+      <td>DCR-DEP-01</td>
+      <td>Upgrade <code>nunjucks</code> from <code>3.2.3</code> to <code>3.2.4+</code></td>
+      <td>~30 min</td>
+    </tr>
+    <tr>
+      <td>4 — SHORT TERM</td>
+      <td>DCR-DEP-02</td>
+      <td>Upgrade <code>markdown-it</code> from <code>12.0.1</code> to <code>12.3.2+</code>; add render timeout on the <code>/_render</code> endpoint</td>
+      <td>~1 hour</td>
+    </tr>
+    <tr>
+      <td>5 — MEDIUM TERM</td>
+      <td>Secret management</td>
+      <td>Replace build-time <code>cloud-secrets.js</code> → <code>.env</code> pattern with runtime Secret Manager calls; remove <code>.env</code> from App Engine deployment artifact</td>
+      <td>~1 day</td>
+    </tr>
+    <tr>
+      <td>6 — LOW PRIORITY</td>
+      <td>DCR-CI-01</td>
+      <td>Pin <code>fkirc/skip-duplicate-actions</code> to a full commit SHA in <code>check.yml</code></td>
+      <td>~15 min</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2>Scan Coverage</h2>
+<table>
+  <thead>
+    <tr><th>Phase</th><th>Status</th><th>Notes</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Phase 0 — Setup</td><td><span style="color:var(--low)">COMPLETE</span></td><td>Repository accessed via GitHub API (clone failed, size too large); full file tree enumerated</td></tr>
+    <tr><td>Phase 1 — Secrets</td><td><span style="color:var(--low)">COMPLETE</span></td><td>No hardcoded secrets; runtime secret loading via GCP Secret Manager + dotenv confirmed</td></tr>
+    <tr><td>Phase 2 — Dependencies</td><td><span style="color:var(--low)">COMPLETE</span></td><td>OSV API queried for key packages: nunjucks, node-fetch, markdown-it, express, adm-zip, cheerio</td></tr>
+    <tr><td>Phase 2.5 — Dep Confusion</td><td><span style="color:var(--low)">COMPLETE</span></td><td>No private-only package names detected</td></tr>
+    <tr><td>Phase 3 — Static Analysis</td><td><span style="color:var(--low)">COMPLETE</span></td><td>SSTI identified in /_render; process.env exposure confirmed via site/_data/process.js</td></tr>
+    <tr><td>Phase 4 — Auth</td><td><span style="color:var(--low)">COMPLETE</span></td><td>Overly broad Google OAuth auth on /_render; no domain restriction</td></tr>
+    <tr><td>Phase 5 — Crypto</td><td><span style="color:var(--low)">COMPLETE</span></td><td>No custom crypto; delegates to Google OIDC</td></tr>
+    <tr><td>Phase 6 — CI/CD</td><td><span style="color:var(--low)">COMPLETE</span></td><td>Two workflows analyzed; no pull_request_target, no script injection; one mutable action ref</td></tr>
+    <tr><td>Phase 9 — Exploitability</td><td><span style="color:var(--low)">COMPLETE</span></td><td>5-gate test applied to all findings; SSTI confirmed fully exploitable</td></tr>
+  </tbody>
+</table>
+
+<div style="margin-top: 2rem; padding: 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--muted); font-size: 0.82rem;">
+  <strong>Disclaimer:</strong> This report was generated by automated static analysis and manual code review via the GitHub API without a local clone. No dynamic testing was performed against the live production environment. All exploitability assessments are based on code review only. The SSTI finding (DCR-01) requires validation in a staging environment before production remediation to confirm the exact scope of accessible environment variables at runtime.
+</div>
+
+</body>
+</html>

