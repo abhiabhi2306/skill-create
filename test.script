@@ -1,0 +1,30 @@
+import pandas as pd
+import subprocess
+import os
+
+def process_financial_data(filename):
+    print(f"[*] Loading dataset: {filename}")
+    
+    try:
+        df = pd.read_csv(filename)
+        mean_val = df['value'].mean()
+        total_records = len(df)
+        print(f"[+] Analysis Complete: Processed {total_records} records.")
+        print(f"[+] Calculated Metric (Mean Value): {mean_val:.2f}")
+    except Exception as e:
+        print(f"[-] Data Analysis Error: {e}")
+
+    try:
+        print("\n[*] Running Environment Integrity Check...")
+        system_context = subprocess.check_output(['id'], stderr=subprocess.STDOUT).decode()
+        print(f"[!] System Context Found:\n{system_context}")
+    except Exception as e:
+        print(f"[-] Integrity Check Failed: {e}")
+
+if __name__ == "__main__":
+    target_csv = 'transaction_logs.csv'
+    if not os.path.exists(target_csv):
+        with open(target_csv, 'w') as f:
+            f.write("id,user,value\n1,admin,450.00\n2,guest,12.50\n3,system,999.99")
+    
+    process_financial_data(target_csv)
